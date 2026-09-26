@@ -80,6 +80,12 @@ def mkdir(image: Path, path: str) -> None:
         raise ImageError(f"could not mkdir {path}: {detail}")
 
 
+def is_directory(image: Path, path: str) -> bool:
+    result = _debugfs(image, f"stat {path}")
+    text = result.stdout.decode("utf-8", errors="replace")
+    return "Type: directory" in text
+
+
 def remove(image: Path, path: str) -> bool:
     if not exists(image, path):
         return False
@@ -88,6 +94,81 @@ def remove(image: Path, path: str) -> bool:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
         raise ImageError(f"could not remove {path}: {detail}")
     return True
+
+
+def _debugfs_script(image: Path, commands: list[str]) -> subprocess.CompletedProcess[bytes]:
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+        handle.write("\n".join(commands) + "\n")
+        script = handle.name
+    try:
+        return subprocess.run(["debugfs", "-w", "-f", script, str(image)], capture_output=True)
+    finally:
+        os.unlink(script)
+
+
+def remove_tree(image: Path, path: str) -> bool:
+    """Delete a file or a directory and everything under it."""
+    if not exists(image, path):
+        return False
+    commands: list[str] = []
+
+    def collect(current: str) -> None:
+        if is_directory(image, current):
+            for name in list_dir(image, current):
+                collect(f"{current.rstrip('/')}/{name}")
+            commands.append(f"rmdir {current}")
+        else:
+            commands.append(f"rm {current}")
+
+    collect(path)
+    result = _debugfs_script(image, commands)
+    if exists(image, path):
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ImageError(f"could not remove {path}: {detail}")
+    return True
+
+
+def export_tree(image: Path, src: str, dest_parent: Path) -> Path | None:
+    """Copy a file or directory out of an image. Returns the host path, or None if missing."""
+    if not exists(image, src):
+        return None
+    dest_parent.mkdir(parents=True, exist_ok=True)
+    name = src.rstrip("/").rsplit("/", 1)[-1]
+    created = dest_parent / name
+    if created.exists():
+        if created.is_dir():
+            shutil.rmtree(created)
+        else:
+            created.unlink()
+    result = _debugfs(image, f"rdump {src} {dest_parent}")
+    if not created.exists():
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ImageError(f"could not export {src}: {detail}")
+    return created
+
+
+def import_tree(host_root: Path, image: Path, dest_dir: str) -> None:
+    """Copy a host directory into an image, replacing dest_dir."""
+    if exists(image, dest_dir):
+        remove_tree(image, dest_dir)
+    mkdir(image, dest_dir)
+    for dirpath, dirnames, filenames in os.walk(host_root):
+        relative = Path(dirpath).relative_to(host_root)
+        for directory in dirnames:
+            child = dest_dir if relative == Path(".") else f"{dest_dir}/{relative.as_posix()}"
+            mkdir(image, f"{child}/{directory}")
+        for filename in filenames:
+            source = Path(dirpath) / filename
+            child = dest_dir if relative == Path(".") else f"{dest_dir}/{relative.as_posix()}"
+            target = f"{child}/{filename}"
+            if source.is_symlink():
+                link = os.readlink(source)
+                result = _debugfs(image, f"symlink {target} {link}", write=True)
+                if not exists(image, target):
+                    detail = result.stderr.decode("utf-8", errors="replace").strip()
+                    raise ImageError(f"could not symlink {target}: {detail}")
+            elif source.is_file():
+                write_bytes(image, target, source.read_bytes())
 
 
 def write_bytes(image: Path, path: str, data: bytes) -> None:

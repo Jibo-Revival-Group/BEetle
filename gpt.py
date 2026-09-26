@@ -98,3 +98,14 @@ def require_jibo_layout(partitions: list[Partition]) -> dict[str, Partition]:
             "dump is not a Jibo eMMC (missing " + ", ".join(missing) + ")"
         )
     return found
+
+
+def same_partition_sizes(dump_map: dict[str, Partition], live_map: dict[str, Partition]) -> list[str]:
+    """Return required partitions whose size differs. Empty means the map can be used."""
+    mismatched = []
+    for name in REQUIRED_PARTITIONS:
+        live = live_map.get(name)
+        original = dump_map.get(name)
+        if live is None or original is None or live.size_sectors != original.size_sectors:
+            mismatched.append(name)
+    return mismatched

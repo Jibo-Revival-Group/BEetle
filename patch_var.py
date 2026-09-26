@@ -13,7 +13,6 @@ import images
 HUB_HOST = "api.5x1.com"
 HUB_PORT = 443
 OTA_ENDPOINT = "http://joap.5x1.com:80"
-SETUP_MARKER = "/jibo/beetle-setup.json"
 
 
 class VarPatchError(RuntimeError):
@@ -70,9 +69,14 @@ def _wpa_config(ssid: str, psk: str) -> str:
         return value.replace("\\", "\\\\").replace('"', '\\"')
 
     if psk:
-        body = f'    ssid="{quote(ssid)}"\n    psk="{quote(psk)}"\n    key_mgmt=WPA-PSK\n'
+        body = (
+            f'    ssid="{quote(ssid)}"\n'
+            "    scan_ssid=1\n"
+            f'    psk="{quote(psk)}"\n'
+            "    key_mgmt=WPA-PSK\n"
+        )
     else:
-        body = f'    ssid="{quote(ssid)}"\n    key_mgmt=NONE\n'
+        body = f'    ssid="{quote(ssid)}"\n    scan_ssid=1\n    key_mgmt=NONE\n'
     return (
         "ctrl_interface=/var/run/wpa_supplicant\n"
         "update_config=1\n"
@@ -82,6 +86,29 @@ def _wpa_config(ssid: str, psk: str) -> str:
         + body
         + "}\n"
     )
+
+
+def bring_wifi_up_before_dhcp(text: str) -> str:
+    """wlan0 used to run DHCP before wpa_supplicant, so it never got an address."""
+    text = text.replace("\nauto wlp1s0\n", "\n#auto wlp1s0\n")
+    old = (
+        "auto wlan0\n"
+        "iface wlan0 inet dhcp\n"
+        "\tpost-up wireless-startup\n"
+        "\tpre-down wpa_cli -i wlan0 terminate\n"
+        "\tudhcpc_opts -R -b -t 3 -T 5 -A 5\n"
+    )
+    new = (
+        "auto wlan0\n"
+        "iface wlan0 inet dhcp\n"
+        "\tpre-up wireless-startup\n"
+        "\tpre-up sleep 8\n"
+        "\tpre-down wpa_cli -i wlan0 terminate\n"
+        "\tudhcpc_opts -b -t 30 -T 2 -A 2\n"
+    )
+    if old in text:
+        return text.replace(old, new, 1)
+    return text.replace("\tpost-up wireless-startup\n", "\tpre-up wireless-startup\n\tpre-up sleep 8\n", 1)
 
 
 def _generate_keypair() -> dict[str, str]:
@@ -122,12 +149,23 @@ def _credentials(existing: dict | None) -> dict:
     return ordered
 
 
+def apply_wifi(image: Path, ssid: str, psk: str) -> None:
+    """Write a Wi-Fi network. Does not change identity, keys, or credentials."""
+    images.write_text(image, "/etc/wpa_supplicant.conf", _wpa_config(ssid, psk))
+    interfaces = images.read_text(image, "/etc/network/interfaces")
+    if interfaces and "wlan0" in interfaces:
+        images.write_text(image, "/etc/network/interfaces", bring_wifi_up_before_dhcp(interfaces))
+
+
 def apply(image: Path, ssid: str, psk: str) -> dict:
     """Patch var in place. Identity, LPS calibration, and SSH host keys stay."""
     identity = robot_identity(image)
     before_identity = images.read_bytes(image, "/jibo/identity.json")
 
     images.write_text(image, "/etc/wpa_supplicant.conf", _wpa_config(ssid, psk))
+    interfaces = images.read_text(image, "/etc/network/interfaces")
+    if interfaces and "wlan0" in interfaces:
+        images.write_text(image, "/etc/network/interfaces", bring_wifi_up_before_dhcp(interfaces))
 
     creds = _credentials(_load_json(image, "/jibo/credentials.json"))
     images.write_text(image, "/jibo/credentials.json", json.dumps(creds))
@@ -137,11 +175,6 @@ def apply(image: Path, ssid: str, psk: str) -> dict:
         images.write_text(image, "/jibo/keys/keypair.json", json.dumps(keypair))
 
     images.write_text(image, "/jibo/mode.json", json.dumps({"mode": "normal"}))
-    images.write_text(
-        image,
-        SETUP_MARKER,
-        json.dumps({"pending": True, "version": 1}),
-    )
 
     after_identity = images.read_bytes(image, "/jibo/identity.json")
     if after_identity != before_identity:
@@ -155,9 +188,6 @@ def apply(image: Path, ssid: str, psk: str) -> dict:
     mode = _load_json(image, "/jibo/mode.json") or {}
     if mode.get("mode") != "normal":
         raise VarPatchError("mode.json was not set to normal")
-    marker = _load_json(image, SETUP_MARKER) or {}
-    if marker.get("pending") is not True:
-        raise VarPatchError("beetle-setup.json was not marked pending")
 
     return {
         "name": identity.get("name"),

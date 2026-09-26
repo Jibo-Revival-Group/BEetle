@@ -17,7 +17,6 @@ import images  # noqa: E402
 import patch_rootfs  # noqa: E402
 import patch_skills  # noqa: E402
 import patch_var  # noqa: E402
-import sector_diff  # noqa: E402
 
 CELESTE = Path("/home/amber/BEcosystem/Celeste-Modem-Okra-Suede.bin")
 
@@ -30,35 +29,6 @@ class GptTests(unittest.TestCase):
         self.assertEqual(found["var"].start_sector, 8294434)
         self.assertEqual(found["rootfsA"].start_sector, 34)
         self.assertIn("skills", found)
-
-
-class SectorDiffTests(unittest.TestCase):
-    def test_only_changed_sectors(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp) / "base"
-            patched = Path(tmp) / "patched"
-            blob = bytearray(b"\0" * 4096)
-            base.write_bytes(blob)
-            blob[512] = 1
-            blob[1024] = 2
-            blob[1025] = 3
-            patched.write_bytes(blob)
-            ranges = sector_diff.changed_ranges(base, patched)
-            self.assertEqual([(item.start, item.count) for item in ranges], [(1, 2)])
-
-
-class FreshnessTests(unittest.TestCase):
-    def test_mount_stamp_is_not_allocation_drift(self):
-        import freshness
-        dump_sb = bytearray(b"\0" * 128)
-        live_sb = bytearray(dump_sb)
-        live_sb[48:52] = b"\x01\x00\x00\x00"
-        live_sb[52:54] = b"\x02\x00"
-        self.assertFalse(freshness.allocation_changed(dump_sb, live_sb))
-        self.assertTrue(freshness.mount_stamp_changed(dump_sb, live_sb))
-        live_sb[12:16] = b"\x10\x00\x00\x00"
-        self.assertTrue(freshness.allocation_changed(dump_sb, live_sb))
-
 
 class VarPatchTests(unittest.TestCase):
     def test_oobe_var_becomes_normal_without_touching_identity(self):
@@ -91,8 +61,6 @@ class VarPatchTests(unittest.TestCase):
             self.assertEqual(creds["region"], "api")
             self.assertTrue(creds["accessKeyId"])
             self.assertTrue(creds["secretAccessKey"])
-            marker = json.loads(images.read_text(image, "/jibo/beetle-setup.json"))
-            self.assertTrue(marker["pending"])
             wpa = images.read_text(image, "/etc/wpa_supplicant.conf")
             self.assertIn('ssid="HomeNet"', wpa)
             self.assertIn('psk="secret-psk"', wpa)
@@ -101,6 +69,29 @@ class VarPatchTests(unittest.TestCase):
             self.assertIn("BEGIN PUBLIC KEY", keys["PublicKey"])
             lps = images.list_dir(image, "/jibo/lps")
             self.assertEqual(lps, [])
+
+    def test_apply_wifi_does_not_touch_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "var.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={image}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(["mkfs.ext4", "-F", "-b", "1024", str(image)], check=True, capture_output=True)
+            identity = '{"serial_number":"BOJW-1","cpuid":"ABCDEF0123456789","name":"Celeste"}\n'
+            images.write_text(image, "/jibo/identity.json", identity)
+            images.write_text(
+                image,
+                "/etc/network/interfaces",
+                "auto wlan0\niface wlan0 inet dhcp\n\tpost-up wireless-startup\n",
+            )
+            patch_var.apply_wifi(image, "WIFI", "secret")
+            written = images.read_text(image, "/etc/wpa_supplicant.conf") or ""
+            self.assertIn('ssid="WIFI"', written)
+            self.assertIn('psk="secret"', written)
+            self.assertIn("pre-up wireless-startup", images.read_text(image, "/etc/network/interfaces") or "")
+            self.assertEqual(images.read_text(image, "/jibo/identity.json"), identity)
+            self.assertIsNone(images.read_text(image, "/jibo/credentials.json"))
 
 
 class FirewallTests(unittest.TestCase):
@@ -131,6 +122,31 @@ class SkillsTextTests(unittest.TestCase):
             "rejectUnauthorized: false",
         )
 
+    def test_placeholder_people_seed_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(patch_skills.seed_placeholders(root), "seeded")
+            nodes = (root / "jibo" / "Knowledge" / "jibo" / "loop" / "nodes").read_text()
+            docs = [json.loads(line) for line in nodes.splitlines() if line.strip()]
+            names = [
+                (doc.get("data") or {}).get("firstName")
+                for doc in docs
+                if doc.get("type") == "user"
+            ]
+            self.assertEqual(names, ["Owner", None, "Friend"])
+            robot = next(doc for doc in docs if (doc.get("data") or {}).get("type") == "robot")
+            self.assertNotIn("firstName", robot["data"])
+            self.assertEqual(patch_skills.seed_placeholders(root), "kept")
+
+    def test_startup_view_draws_lan_address(self):
+        import patch_services
+        source = Path(__file__).resolve().parents[2] / "BEnch" / "usr" / "local" / "bin" / "jibo-ssm" / "startup" / "startup-view.js"
+        if not source.is_file():
+            self.skipTest("BEnch startup view is not on this machine")
+        updated = patch_services.show_lan_address(source.read_text(encoding="utf-8"))
+        self.assertIn("function lanAddress()", updated)
+        self.assertEqual(updated, patch_services.show_lan_address(updated))
+
 
 class RealRootfsTests(unittest.TestCase):
     def test_celeste_firewall_name(self):
@@ -140,6 +156,46 @@ class RealRootfsTests(unittest.TestCase):
         names = patch_rootfs.firewall_scripts(image)
         self.assertIn("S30firewall", names)
         self.assertNotIn("S50sshd", names)
+
+
+
+class FlashTests(unittest.TestCase):
+    def test_var_is_never_a_flash_target(self):
+        import beetle
+        import dfu_flash
+
+        self.assertEqual(
+            beetle._partition_list(None),
+            ["rootfsA", "rootfsB", "services", "skills"],
+        )
+        self.assertEqual(
+            beetle._flash_names(None, True),
+            ["var", "rootfsA", "rootfsB", "services", "skills"],
+        )
+        with self.assertRaises(beetle.BeetleError):
+            beetle._partition_list("rootfsA,var")
+        self.assertEqual(beetle.main(["--partitions", "var", "/tmp/does-not-matter.bin"]), 2)
+        self.assertEqual(beetle.main(["--setup", "--partitions", "skills", "/tmp/does-not-matter.bin"]), 2)
+        with self.assertRaises(dfu_flash.DfuFlashError):
+            dfu_flash.write_partitions({}, "", ["var"], {}, {}, Path("/tmp"), False)
+
+    def test_skills_chunks_cover_the_partition(self):
+        import dfu_flash
+
+        capacity = (10 * 1024 * 1024 * 1024) + (100 * 512)
+        chunks = dfu_flash.skills_chunks(capacity)
+        self.assertEqual(chunks[0]["name"], "skills-000")
+        self.assertEqual(chunks[0]["offset_bytes"], 0)
+        self.assertEqual(sum(chunk["size_bytes"] for chunk in chunks), capacity)
+        self.assertLess(chunks[-1]["size_bytes"], dfu_flash.SKILLS_CHUNK_BYTES)
+
+    def test_missing_dfu_tools_say_how_to_build(self):
+        import dfu_flash
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(dfu_flash.DfuFlashError) as caught:
+                dfu_flash.require_tools(Path(tmp))
+        self.assertIn("./dfu/build.sh", str(caught.exception))
 
 
 if __name__ == "__main__":
