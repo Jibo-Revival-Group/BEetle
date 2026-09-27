@@ -2,7 +2,10 @@
 """Flash a Jibo eMMC image over DFU without replacing /var.
 
 Identity, calibration, and the rest of /var stay on the robot.
---setup can write a Wi-Fi network onto the robot's existing var.
+--setup writes Wi-Fi, credentials, and normal mode onto the robot's existing var,
+then updates skills, services, and the firewall.
+--quick-setup writes only that var patch.
+--normal changes only mode.json.
 --dump and --dump-var read the robot instead of writing it.
 """
 
@@ -46,7 +49,8 @@ SAFE_PARTITIONS = ("rootfsA", "rootfsB", "services", "skills")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Flash a Jibo eMMC image over DFU. /var is left in place unless --setup writes Wi-Fi onto it. "
+        description="Flash a Jibo eMMC image over DFU. /var is left in place unless --setup or "
+        "--quick-setup writes Wi-Fi, credentials, and normal mode onto it. "
         "--dump and --dump-var read the robot instead."
     )
     parser.add_argument("image", nargs="?", type=Path, help="Full eMMC image (.bin) to flash")
@@ -64,10 +68,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--setup",
         action="store_true",
         help="Download current BEam and BEnch, remove the firewall, ask for Wi-Fi, "
-        "and patch those into the image before writing. Wi-Fi is written onto the robot's existing var.",
+        "and patch those into the image before writing. Wi-Fi, credentials, and normal mode "
+        "are written onto the robot's existing var.",
     )
-    parser.add_argument("--ssid", help="Wi-Fi network name, used with --setup")
-    parser.add_argument("--psk", help="Wi-Fi password, used with --setup. Empty string for an open network.")
+    parser.add_argument(
+        "--quick-setup",
+        action="store_true",
+        help="Ask for Wi-Fi and write Wi-Fi, credentials, and normal mode onto the robot's existing var. "
+        "Does not download BEam or BEnch, and does not write any other partition.",
+    )
+    parser.add_argument("--ssid", help="Wi-Fi network name, used with --setup or --quick-setup")
+    parser.add_argument(
+        "--psk",
+        help="Wi-Fi password, used with --setup or --quick-setup. Empty string for an open network.",
+    )
     parser.add_argument(
         "--dump",
         action="store_true",
@@ -77,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dump-var",
         action="store_true",
         help="Read /var over DFU into work/jibo-var-dump.bin.",
+    )
+    parser.add_argument(
+        "--normal",
+        action="store_true",
+        help="Read /var over DFU and change only mode.json to normal. It does not rebuild /var.",
     )
     return parser
 
@@ -129,6 +148,16 @@ def _flash_names(spec: str | None, setup: bool) -> list[str]:
     return names
 
 
+def _prepare_var(image: Path, ssid: str, psk: str) -> None:
+    images.settle(image)
+    print("Patching Wi-Fi, credentials, and mode into this robot's var...")
+    patch_var.apply_wifi(image, ssid, psk)
+    patch_var.ensure_credentials(image)
+    mode_path = patch_var.set_mode_normal(image)
+    print(f"Set {mode_path} to normal.")
+    images.settle(image)
+
+
 def _prepare_setup(
     paths: dict[str, Path],
     beam: Path,
@@ -138,8 +167,7 @@ def _prepare_setup(
     refresh_skills: bool,
     refresh_services: bool,
 ) -> None:
-    print("Patching Wi-Fi into this robot's var...")
-    patch_var.apply_wifi(paths["var"], ssid, psk)
+    _prepare_var(paths["var"], ssid, psk)
     if refresh_skills:
         images.remove(paths["skills"], patch_skills.STAMP_PATH)
     if refresh_services:
@@ -181,7 +209,7 @@ def _dump(args: argparse.Namespace) -> int:
     if args.dump and args.dump_var:
         print("Use either --dump or --dump-var.", file=sys.stderr)
         return 2
-    if args.image or args.setup or args.partitions or args.write_only or args.ssid or args.psk is not None:
+    if args.image or args.setup or args.quick_setup or args.normal or args.partitions or args.write_only or args.ssid or args.psk is not None:
         print("A dump does not take an image path or flash options.", file=sys.stderr)
         return 2
     work = (args.work or (REPO / "work")).resolve()
@@ -221,10 +249,115 @@ def _dump(args: argparse.Namespace) -> int:
     return 0
 
 
+def _set_normal(args: argparse.Namespace) -> int:
+    if args.image or args.setup or args.quick_setup or args.dump or args.dump_var or args.partitions or args.write_only or args.ssid or args.psk is not None:
+        print("--normal only reads /var and changes mode.json to normal.", file=sys.stderr)
+        return 2
+    work = (args.work or (REPO / "work")).resolve()
+    work.mkdir(parents=True, exist_ok=True)
+    dest = work / "normal-var.img"
+    try:
+        tools = dfu_flash.require_tools()
+    except dfu_flash.DfuFlashError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    entered = False
+    ready_to_write = False
+    try:
+        port = dfu_flash.enter(tools)
+        entered = True
+        live = dfu_flash.read_layout(tools, port)
+        dfu_flash.read_partition(tools, port, "var", live["var"].size_bytes, dest)
+        mode_path, changed = patch_var.set_mode_inplace(dest)
+        if not changed:
+            print(f"{mode_path} is already normal. /var was not written.")
+            try:
+                dfu_flash.reset_robot(tools, port)
+            except dfu_flash.DfuFlashError as exc:
+                print(f"mode.json was already normal. Reboot was not confirmed: {exc}")
+                print("Unplug USB and power-cycle.")
+            return 0
+        print(f"Set {mode_path} to normal. Writing that file back.")
+        ready_to_write = True
+        dfu_flash.write_var(tools, port, dest, live["var"].size_bytes)
+        try:
+            dfu_flash.reset_robot(tools, port)
+        except dfu_flash.DfuFlashError as exc:
+            print(f"mode.json was written. Reboot was not confirmed: {exc}")
+            print("Unplug USB and power-cycle.")
+            return 0
+    except KeyboardInterrupt:
+        again = " Power-cycle into RCM first." if entered else ""
+        if ready_to_write:
+            print(f"\nStopped while writing /var.{again} Re-run with --normal.", file=sys.stderr)
+        else:
+            print(f"\nStopped before writing.{again} Re-run with --normal.", file=sys.stderr)
+        return 130
+    except (BeetleError, dfu_flash.DfuFlashError, gpt.GptError, patch_var.VarPatchError, images.ImageError) as exc:
+        print(str(exc), file=sys.stderr)
+        if entered:
+            print("Power-cycle into RCM before trying again.", file=sys.stderr)
+        return 1
+    print("mode.json is normal. No other file was changed.")
+    return 0
+
+
+def _quick_setup(args: argparse.Namespace) -> int:
+    if args.image or args.setup or args.normal or args.dump or args.dump_var or args.partitions or args.write_only:
+        print("--quick-setup only updates /var. It does not take an image or other flash options.", file=sys.stderr)
+        return 2
+    ssid, psk = _prompt_wifi(args)
+    if not ssid.strip():
+        print("Wi-Fi SSID is required.", file=sys.stderr)
+        return 2
+    work = (args.work or (REPO / "work")).resolve()
+    work.mkdir(parents=True, exist_ok=True)
+    dest = work / "quick-var.img"
+    try:
+        tools = dfu_flash.require_tools()
+    except dfu_flash.DfuFlashError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    entered = False
+    ready_to_write = False
+    try:
+        port = dfu_flash.enter(tools)
+        entered = True
+        live = dfu_flash.read_layout(tools, port)
+        dfu_flash.read_partition(tools, port, "var", live["var"].size_bytes, dest)
+        _prepare_var(dest, ssid, psk)
+        ready_to_write = True
+        dfu_flash.write_var(tools, port, dest, live["var"].size_bytes)
+        try:
+            dfu_flash.reset_robot(tools, port)
+        except dfu_flash.DfuFlashError as exc:
+            print(f"/var was written. Reboot was not confirmed: {exc}")
+            print("Unplug USB and power-cycle.")
+            return 0
+    except KeyboardInterrupt:
+        again = " Power-cycle into RCM first." if entered else ""
+        if ready_to_write:
+            print(f"\nStopped while writing /var.{again} Re-run with --quick-setup.", file=sys.stderr)
+        else:
+            print(f"\nStopped before writing.{again} Re-run with --quick-setup.", file=sys.stderr)
+        return 130
+    except (BeetleError, dfu_flash.DfuFlashError, gpt.GptError, patch_var.VarPatchError, images.ImageError) as exc:
+        print(str(exc), file=sys.stderr)
+        if entered:
+            print("Power-cycle into RCM before trying again.", file=sys.stderr)
+        return 1
+    print("Quick setup finished. Only /var was written.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if _dump_requested(args):
         return _dump(args)
+    if args.normal:
+        return _set_normal(args)
+    if args.quick_setup:
+        return _quick_setup(args)
     if args.image is None:
         print("An image path is required to flash. Use --dump or --dump-var to read the robot.", file=sys.stderr)
         return 2
@@ -256,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.setup:
-        print("Setup writes Wi-Fi onto the robot's existing var. The rest of var stays.")
+        print("Setup writes Wi-Fi, credentials, and normal mode onto the robot's existing var. The rest of var stays.")
     else:
         print("Leaving var on the robot alone.")
     print("Will write: " + ", ".join(names))
@@ -357,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
             print("Power-cycle into RCM before trying again.", file=sys.stderr)
         return 1
     if args.setup:
-        print("Flash finished. var was kept, with the Wi-Fi network you entered.")
+        print("Flash finished. var was kept. Wi-Fi, credentials, and normal mode were written onto it.")
     else:
         print("Flash finished. var was not written.")
     return 0

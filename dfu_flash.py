@@ -458,6 +458,16 @@ def _write_skills_chunks(
             piece.unlink(missing_ok=True)
 
 
+def write_var(tools: dict[str, Path], port: str, image: Path, size: int) -> None:
+    """Write one var image. Does not touch the flash progress file."""
+    if not image.is_file() or image.stat().st_size != size:
+        raise DfuFlashError(f"{image} is missing or is not the live size of var.")
+    alt_names, _output = alternatives(tools["dfu_util"], port)
+    if "var" not in alt_names:
+        raise DfuFlashError("The DFU loader does not expose var.")
+    _download(tools, port, "var", image)
+
+
 def reset_robot(tools: dict[str, Path], port: str) -> None:
     print("Asking the robot to leave DFU and reboot.")
     _run_visible([str(tools["dfu_util"]), "-d", "0955:701a", "--path", port, "-e", "-R"])

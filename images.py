@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import struct
 import subprocess
 import tempfile
 import time
@@ -194,6 +196,182 @@ def write_text(image: Path, path: str, text: str) -> None:
     if not text.endswith("\n"):
         text += "\n"
     write_bytes(image, path, text.encode("utf-8"))
+
+
+_METADATA_CSUM = 0x400
+_CSUM_SEED = 0x2000
+_EXTENTS_FL = 0x80000
+_EXTENT_MAGIC = 0xF30A
+
+
+def _crc32c(data: bytes, crc: int = 0xFFFFFFFF) -> int:
+    table = _crc32c.table  # type: ignore[attr-defined]
+    for byte in data:
+        crc = table[(crc ^ byte) & 0xFF] ^ (crc >> 8)
+    return crc & 0xFFFFFFFF
+
+
+def _crc32c_table() -> list[int]:
+    polynomial = 0x82F63B78
+    table = []
+    for index in range(256):
+        value = index
+        for _ in range(8):
+            value = (value >> 1) ^ polynomial if value & 1 else value >> 1
+        table.append(value)
+    return table
+
+
+_crc32c.table = _crc32c_table()  # type: ignore[attr-defined]
+
+
+def _superblock(image: Path) -> bytes:
+    with image.open("rb") as handle:
+        handle.seek(1024)
+        block = handle.read(1024)
+    if len(block) < 0x280 or struct.unpack_from("<H", block, 0x38)[0] != 0xEF53:
+        raise ImageError(f"{image.name} is not an ext filesystem")
+    return block
+
+
+def _filesystem_layout(image: Path) -> dict[str, int]:
+    block = _superblock(image)
+    log_block = struct.unpack_from("<I", block, 0x18)[0]
+    incompat = struct.unpack_from("<I", block, 0x60)[0]
+    ro_compat = struct.unpack_from("<I", block, 0x64)[0]
+    if incompat & _CSUM_SEED:
+        seed = struct.unpack_from("<I", block, 0x270)[0]
+    elif ro_compat & _METADATA_CSUM:
+        seed = _crc32c(block[0x68:0x78])
+    else:
+        seed = 0
+    return {
+        "block_size": 1024 << log_block,
+        "inode_size": struct.unpack_from("<H", block, 0x58)[0],
+        "metadata_csum": int(bool(ro_compat & _METADATA_CSUM)),
+        "csum_seed": seed,
+    }
+
+
+def _inode_csum(seed: int, inum: int, raw: bytes) -> int:
+    node = bytearray(raw)
+    if len(node) >= 0x7E:
+        node[0x7C:0x7E] = b"\x00\x00"
+    if len(node) >= 0x84:
+        node[0x82:0x84] = b"\x00\x00"
+    crc = _crc32c(struct.pack("<I", inum), seed)
+    crc = _crc32c(node[0x64:0x68], crc)
+    return _crc32c(bytes(node), crc)
+
+
+def _file_blocks(inode: bytes, block_size: int) -> list[int]:
+    flags = struct.unpack_from("<I", inode, 0x20)[0]
+    if flags & _EXTENTS_FL:
+        magic, entries, _limit, depth = struct.unpack_from("<HHHH", inode, 0x28)
+        if magic != _EXTENT_MAGIC or depth != 0:
+            raise ImageError("this file is not a single extent, so it cannot be edited in place")
+        blocks: list[int] = []
+        cursor = 0x28 + 12
+        for _ in range(entries):
+            logical, length, start_hi, start_lo = struct.unpack_from("<IHHI", inode, cursor)
+            cursor += 12
+            length &= 0x7FFF
+            start = start_lo | (start_hi << 32)
+            if logical != len(blocks):
+                raise ImageError("the file's extents have a hole, so it cannot be edited in place")
+            blocks.extend(range(start, start + length))
+        return blocks
+    blocks = []
+    for index in range(12):
+        number = struct.unpack_from("<I", inode, 0x28 + index * 4)[0]
+        if not number:
+            break
+        blocks.append(number)
+    return blocks
+
+
+def rewrite_file_bytes(image: Path, path: str, data: bytes) -> None:
+    """Replace one file's bytes without allocating blocks or opening the journal.
+
+    The superblock and every other file stay byte-for-byte. This is the edit
+    used when the only wanted change is the contents of an existing file.
+    """
+    if not exists(image, path) or is_directory(image, path):
+        raise ImageError(f"{path} is not an existing file")
+    layout = _filesystem_layout(image)
+    stat = _debugfs(image, f"stat {path}")
+    imap = _debugfs(image, f"imap {path}")
+    stat_text = stat.stdout.decode("utf-8", errors="replace")
+    imap_text = imap.stdout.decode("utf-8", errors="replace")
+    inode_match = re.search(r"Inode:\s+(\d+)", stat_text)
+    place = re.search(r"located at block (\d+), offset (0x[0-9a-fA-F]+)", imap_text)
+    if not inode_match or not place:
+        raise ImageError(f"could not locate {path} in the filesystem")
+    inum = int(inode_match.group(1))
+    inode_at = int(place.group(1)) * layout["block_size"] + int(place.group(2), 16)
+    inode_size = layout["inode_size"]
+    with image.open("r+b") as handle:
+        handle.seek(inode_at)
+        inode = bytearray(handle.read(inode_size))
+        if len(inode) != inode_size:
+            raise ImageError(f"could not read the inode for {path}")
+        if layout["metadata_csum"]:
+            stored = struct.unpack_from("<H", inode, 0x7C)[0]
+            if inode_size >= 0x84:
+                stored |= struct.unpack_from("<H", inode, 0x82)[0] << 16
+            if stored != _inode_csum(layout["csum_seed"], inum, inode):
+                raise ImageError(f"the inode checksum for {path} does not match")
+        blocks = _file_blocks(inode, layout["block_size"])
+        capacity = len(blocks) * layout["block_size"]
+        if len(data) > capacity:
+            raise ImageError(f"{path} has no free space left in its existing blocks")
+        old_size = struct.unpack_from("<I", inode, 4)[0]
+        payload = data + b"\x00" * (min(old_size, capacity) - len(data) if len(data) < old_size else 0)
+        offset = 0
+        for number in blocks:
+            chunk = payload[offset : offset + layout["block_size"]]
+            if not chunk:
+                break
+            handle.seek(number * layout["block_size"])
+            handle.write(chunk)
+            offset += len(chunk)
+        struct.pack_into("<I", inode, 4, len(data))
+        if layout["metadata_csum"]:
+            checksum = _inode_csum(layout["csum_seed"], inum, inode)
+            struct.pack_into("<H", inode, 0x7C, checksum & 0xFFFF)
+            if inode_size >= 0x84:
+                struct.pack_into("<H", inode, 0x82, (checksum >> 16) & 0xFFFF)
+        handle.seek(inode_at)
+        handle.write(inode)
+    written = read_bytes(image, path)
+    if written != data:
+        raise ImageError(f"{path} was not updated")
+
+
+def _e2fsck(image: Path, flag: str) -> int:
+    result = subprocess.run(["e2fsck", flag, str(image)], capture_output=True, text=True)
+    if result.returncode in (0, 1, 2, 4):
+        return result.returncode
+    detail = (result.stderr or result.stdout).strip()
+    raise ImageError(
+        "could not check " + image.name + (": " + detail if detail else f" (e2fsck exit {result.returncode})")
+    )
+
+
+def settle(image: Path) -> bool:
+    """Replay an open journal and repair the file table before it is edited.
+
+    A preen that stops on an inconsistency is followed by a full repair.
+    Returns whether e2fsck changed the image.
+    """
+    print(f"Checking {image.name} so its journal is closed.", flush=True)
+    code = _e2fsck(image, "-p")
+    if code == 4:
+        print(f"Repairing {image.name}. The preen check could not finish it.", flush=True)
+        code = _e2fsck(image, "-y")
+        if code == 4:
+            raise ImageError(f"could not repair {image.name}")
+    return code != 0
 
 
 def extract_partition(dump: Path, start_sector: int, size_sectors: int, dest: Path) -> None:

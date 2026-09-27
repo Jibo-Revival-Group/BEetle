@@ -93,6 +93,113 @@ class VarPatchTests(unittest.TestCase):
             self.assertEqual(images.read_text(image, "/jibo/identity.json"), identity)
             self.assertIsNone(images.read_text(image, "/jibo/credentials.json"))
 
+    def test_set_mode_normal_finds_automod_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "var.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={image}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(["mkfs.ext4", "-F", "-b", "1024", str(image)], check=True, capture_output=True)
+            images.write_text(image, "/jibo/mode.json", json.dumps({"mode": "oobe", "note": "keep"}))
+            images.write_text(image, "/jibo/identity.json", '{"name":"Jibo"}\n')
+            path = patch_var.set_mode_normal(image)
+            self.assertEqual(path, "/jibo/mode.json")
+            written = json.loads(images.read_text(image, "/jibo/mode.json") or "")
+            self.assertEqual(written["mode"], "normal")
+            self.assertEqual(written["note"], "keep")
+            self.assertEqual(images.read_text(image, "/jibo/identity.json"), '{"name":"Jibo"}\n')
+
+    def test_set_mode_inplace_changes_only_that_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "var.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={image}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(["mkfs.ext4", "-F", "-b", "1024", str(image)], check=True, capture_output=True)
+            images.write_text(image, "/jibo/mode.json", json.dumps({"mode": "oobe", "note": "keep"}))
+            images.write_text(image, "/jibo/identity.json", '{"name":"Jibo"}\n')
+            before = image.read_bytes()
+            path, changed = patch_var.set_mode_inplace(image)
+            self.assertEqual(path, "/jibo/mode.json")
+            self.assertTrue(changed)
+            written = json.loads(images.read_text(image, "/jibo/mode.json") or "")
+            self.assertEqual(written["mode"], "normal")
+            self.assertEqual(written["note"], "keep")
+            self.assertEqual(images.read_text(image, "/jibo/identity.json"), '{"name":"Jibo"}\n')
+            after = image.read_bytes()
+            self.assertEqual(before[1024:2048], after[1024:2048])
+            again, changed_again = patch_var.set_mode_inplace(image)
+            self.assertEqual(again, "/jibo/mode.json")
+            self.assertFalse(changed_again)
+
+            classic = Path(tmp) / "classic.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={classic}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "mkfs.ext4",
+                    "-F",
+                    "-b",
+                    "1024",
+                    "-I",
+                    "128",
+                    "-O",
+                    "^metadata_csum,^64bit,extents,filetype,has_journal",
+                    str(classic),
+                ],
+                check=True,
+                capture_output=True,
+            )
+            images.write_text(classic, "/jibo/mode.json", json.dumps({"mode": "oobe"}))
+            images.write_text(classic, "/jibo/identity.json", '{"name":"Jibo"}\n')
+            before_classic = classic.read_bytes()
+            patch_var.set_mode_inplace(classic)
+            self.assertEqual(json.loads(images.read_text(classic, "/jibo/mode.json") or "")["mode"], "normal")
+            self.assertEqual(images.read_text(classic, "/jibo/identity.json"), '{"name":"Jibo"}\n')
+            after_classic = classic.read_bytes()
+            self.assertEqual(before_classic[1024:2048], after_classic[1024:2048])
+
+    def test_ensure_credentials_keeps_an_existing_keypair(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "var.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={image}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(["mkfs.ext4", "-F", "-b", "1024", str(image)], check=True, capture_output=True)
+            images.write_text(
+                image,
+                "/jibo/identity.json",
+                json.dumps({"serial_number": "BOJW-1", "cpuid": "ABCDEF0123456789", "name": "Eggshell"}),
+            )
+            images.write_text(image, "/jibo/keys/keypair.json", json.dumps({"PrivateKey": "keep", "PublicKey": "keep"}))
+            patch_var.ensure_credentials(image)
+            keys = json.loads(images.read_text(image, "/jibo/keys/keypair.json") or "")
+            self.assertEqual(keys["PrivateKey"], "keep")
+            creds = json.loads(images.read_text(image, "/jibo/credentials.json") or "")
+            self.assertEqual(creds["endpoint"], "http://joap.5x1.com:80")
+            self.assertTrue(creds["accessKeyId"])
+            self.assertEqual(
+                images.read_text(image, "/jibo/identity.json"),
+                json.dumps({"serial_number": "BOJW-1", "cpuid": "ABCDEF0123456789", "name": "Eggshell"}) + "\n",
+            )
+
+    def test_settle_closes_the_journal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "var.img"
+            subprocess.run(
+                ["dd", "if=/dev/zero", f"of={image}", "bs=1M", "count=16", "status=none"],
+                check=True,
+            )
+            subprocess.run(["mkfs.ext4", "-F", "-b", "1024", str(image)], check=True, capture_output=True)
+            subprocess.run(["debugfs", "-w", "-R", "dirty", str(image)], check=True, capture_output=True)
+            self.assertTrue(images.settle(image))
+            self.assertFalse(images.settle(image))
+
 
 class FirewallTests(unittest.TestCase):
     def test_removes_s30_and_s21(self):
@@ -180,6 +287,13 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(beetle.main(["--dump", "--dump-var"]), 2)
         self.assertEqual(beetle.main(["--dump", "/tmp/does-not-matter.bin"]), 2)
         self.assertEqual(beetle.main(["--dump-var", "--setup"]), 2)
+        self.assertEqual(beetle.main(["--normal", "/tmp/does-not-matter.bin"]), 2)
+        self.assertEqual(beetle.main(["--normal", "--dump"]), 2)
+        self.assertEqual(beetle.main(["--normal", "--setup"]), 2)
+        self.assertEqual(beetle.main(["--quick-setup", "/tmp/does-not-matter.bin"]), 2)
+        self.assertEqual(beetle.main(["--quick-setup", "--setup"]), 2)
+        self.assertEqual(beetle.main(["--quick-setup", "--normal"]), 2)
+        self.assertEqual(beetle.main(["--dump", "--quick-setup"]), 2)
 
     def test_splice_places_bytes_at_the_partition_offset(self):
         import dfu_flash

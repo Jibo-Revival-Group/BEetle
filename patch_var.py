@@ -149,6 +149,98 @@ def _credentials(existing: dict | None) -> dict:
     return ordered
 
 
+def _walk_files(image: Path, directory: str) -> list[str]:
+    found: list[str] = []
+    for name in images.list_dir(image, directory):
+        if name in ("tmp", "lost+found"):
+            continue
+        child = f"{directory.rstrip('/')}/{name}"
+        if images.is_directory(image, child):
+            found.extend(_walk_files(image, child))
+        elif name == "mode.json":
+            found.append(child)
+    return found
+
+
+def find_mode_json(image: Path) -> str:
+    """Return the mode.json AutoMod edits, found by listing the var file table."""
+    found = _walk_files(image, "/")
+    if "/jibo/mode.json" in found:
+        return "/jibo/mode.json"
+    if len(found) == 1:
+        return found[0]
+    if not found:
+        raise VarPatchError("var has no mode.json")
+    raise VarPatchError("var has more than one mode.json: " + ", ".join(found))
+
+
+def _mode_text(current: dict) -> str:
+    text = json.dumps(current)
+    if not text.endswith("\n"):
+        text += "\n"
+    return text
+
+
+def set_mode_normal(image: Path) -> str:
+    """Set mode.json to normal. Other fields in that file stay. Returns its path."""
+    path = find_mode_json(image)
+    current = _load_json(image, path) or {}
+    current["mode"] = "normal"
+    images.write_text(image, path, json.dumps(current))
+    written = _load_json(image, path) or {}
+    if written.get("mode") != "normal":
+        raise VarPatchError(f"{path} was not set to normal")
+    return path
+
+
+def set_mode_inplace(image: Path) -> tuple[str, bool]:
+    """Change mode.json to normal without allocating blocks or touching other files.
+
+    Returns the path and whether its bytes changed.
+    """
+    path = find_mode_json(image)
+    current = _load_json(image, path) or {}
+    if current.get("mode") == "normal":
+        return path, False
+    current["mode"] = "normal"
+    data = _mode_text(current).encode("utf-8")
+    existing = images.read_bytes(image, path)
+    if existing == data:
+        return path, False
+    try:
+        images.rewrite_file_bytes(image, path, data)
+    except images.ImageError as exc:
+        raise VarPatchError(str(exc)) from exc
+    written = _load_json(image, path) or {}
+    if written.get("mode") != "normal":
+        raise VarPatchError(f"{path} was not set to normal")
+    return path, True
+
+
+def ensure_credentials(image: Path) -> None:
+    """Create cloud credentials and a keypair when they are missing.
+
+    An existing keypair is left alone. Identity is not modified.
+    """
+    identity = robot_identity(image)
+    before_identity = images.read_bytes(image, "/jibo/identity.json")
+    creds = _credentials(_load_json(image, "/jibo/credentials.json"))
+    images.write_text(image, "/jibo/credentials.json", json.dumps(creds))
+    if images.read_bytes(image, "/jibo/keys/keypair.json") is None:
+        images.write_text(image, "/jibo/keys/keypair.json", json.dumps(_generate_keypair()))
+    if images.read_bytes(image, "/jibo/identity.json") != before_identity:
+        raise VarPatchError("identity.json changed while writing credentials; refusing to continue")
+    written = _load_json(image, "/jibo/credentials.json")
+    if not written or written.get("endpoint") != OTA_ENDPOINT or written.get("region") != "api":
+        raise VarPatchError("credentials.json was not written correctly")
+    if not written.get("accessKeyId") or not written.get("secretAccessKey"):
+        raise VarPatchError("credentials.json is missing keys")
+    if not images.read_bytes(image, "/jibo/keys/keypair.json"):
+        raise VarPatchError("keypair.json was not written")
+    if identity.get("serial_number") != robot_identity(image).get("serial_number"):
+        raise VarPatchError("identity.json changed while writing credentials; refusing to continue")
+
+
 def apply_wifi(image: Path, ssid: str, psk: str) -> None:
     """Write a Wi-Fi network. Does not change identity, keys, or credentials."""
     images.write_text(image, "/etc/wpa_supplicant.conf", _wpa_config(ssid, psk))
@@ -167,12 +259,7 @@ def apply(image: Path, ssid: str, psk: str) -> dict:
     if interfaces and "wlan0" in interfaces:
         images.write_text(image, "/etc/network/interfaces", bring_wifi_up_before_dhcp(interfaces))
 
-    creds = _credentials(_load_json(image, "/jibo/credentials.json"))
-    images.write_text(image, "/jibo/credentials.json", json.dumps(creds))
-
-    if images.read_bytes(image, "/jibo/keys/keypair.json") is None:
-        keypair = _generate_keypair()
-        images.write_text(image, "/jibo/keys/keypair.json", json.dumps(keypair))
+    ensure_credentials(image)
 
     images.write_text(image, "/jibo/mode.json", json.dumps({"mode": "normal"}))
 
