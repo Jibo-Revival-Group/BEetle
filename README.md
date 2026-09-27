@@ -30,3 +30,14 @@ sudo python3 beetle.py /path/to/image.bin --setup
 ```
 
 Skills is about 10 GiB. Let the flash finish before unplugging.
+
+## Dump
+
+`--dump` and `--dump-var` read the robot over DFU. They do not take an image path.
+
+```bash
+sudo python3 beetle.py --dump
+sudo python3 beetle.py --dump-var
+```
+
+`--dump` writes `work/jibo-full-dump.bin`: the primary GPT and every partition, with unused space left zero. `--dump-var` writes only `/var` to `work/jibo-var-dump.bin`. A failed or interrupted read deletes the partial file. Keep the robot powered until the command prints that the dump finished.

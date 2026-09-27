@@ -176,6 +176,22 @@ class FlashTests(unittest.TestCase):
             beetle._partition_list("rootfsA,var")
         self.assertEqual(beetle.main(["--partitions", "var", "/tmp/does-not-matter.bin"]), 2)
         self.assertEqual(beetle.main(["--setup", "--partitions", "skills", "/tmp/does-not-matter.bin"]), 2)
+        self.assertEqual(beetle.main([]), 2)
+        self.assertEqual(beetle.main(["--dump", "--dump-var"]), 2)
+        self.assertEqual(beetle.main(["--dump", "/tmp/does-not-matter.bin"]), 2)
+        self.assertEqual(beetle.main(["--dump-var", "--setup"]), 2)
+
+    def test_splice_places_bytes_at_the_partition_offset(self):
+        import dfu_flash
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "piece"
+            dest = root / "image"
+            source.write_bytes(b"abc")
+            dest.write_bytes(b"\0" * 8)
+            dfu_flash._splice(source, dest, 3)
+            self.assertEqual(dest.read_bytes(), b"\0\0\0abc\0\0")
         with self.assertRaises(dfu_flash.DfuFlashError):
             dfu_flash.write_partitions({}, "", ["var"], {}, {}, Path("/tmp"), False)
 

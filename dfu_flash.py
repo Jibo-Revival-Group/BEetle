@@ -198,6 +198,105 @@ def read_layout(tools: dict[str, Path], port: str) -> dict[str, gpt.Partition]:
         raise DfuFlashError(f"The DFU partition map is not a Jibo layout: {exc}") from exc
 
 
+def _splice(source: Path, dest: Path, offset: int) -> None:
+    with source.open("rb") as infile, dest.open("r+b") as outfile:
+        outfile.seek(offset)
+        remaining = source.stat().st_size
+        while remaining:
+            want = min(1024 * 1024, remaining)
+            block = infile.read(want)
+            if len(block) != want:
+                raise DfuFlashError("The DFU read ended early while copying it into the dump.")
+            outfile.write(block)
+            remaining -= len(block)
+
+
+def _read_then_splice(tools: dict[str, Path], port: str, alt: str, size: int, dest: Path, offset: int) -> None:
+    with tempfile.NamedTemporaryFile(prefix=f"dfu-read-{alt}-", dir=dest.parent, delete=False) as handle:
+        piece = Path(handle.name)
+    try:
+        read_partition(tools, port, alt, size, piece)
+        _splice(piece, dest, offset)
+    finally:
+        piece.unlink(missing_ok=True)
+
+
+def dump_var(tools: dict[str, Path], port: str, dest: Path) -> None:
+    """Read the live /var partition into dest. A failed read leaves no dest file."""
+    layout = read_layout(tools, port)
+    partial = dest.with_name(dest.name + ".partial")
+    partial.unlink(missing_ok=True)
+    try:
+        read_partition(tools, port, "var", layout["var"].size_bytes, partial)
+        partial.replace(dest)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+
+
+def dump_emmc(tools: dict[str, Path], port: str, dest: Path) -> None:
+    """Read the primary GPT and every partition into one eMMC-sized image.
+
+    Unused space stays zero. The backup GPT at the end of the disk is not
+    exposed by the loader, so those sectors stay zero too. BEetle only needs
+    the primary GPT to flash the image back.
+    """
+    try:
+        raw = bounded.read_dfu_alt_prefix(port)
+    except bounded.BoundedDfuError as exc:
+        raise DfuFlashError(f"Could not read the partition map over DFU: {exc}") from exc
+    try:
+        parts = gpt.parse_gpt(raw)
+        gpt.require_jibo_layout(parts)
+    except gpt.GptError as exc:
+        raise DfuFlashError(f"The DFU partition map is not a Jibo layout: {exc}") from exc
+    alt_names, _output = alternatives(tools["dfu_util"], port)
+    partial = dest.with_name(dest.name + ".partial")
+    partial.unlink(missing_ok=True)
+    full = gpt.EMMC_TOTAL_SECTORS * gpt.SECTOR_SIZE
+    try:
+        with partial.open("wb") as stream:
+            stream.write(raw)
+            stream.truncate(full)
+        print(f"Writing the dump to {dest.name} ({full / 1024 / 1024:.0f} MiB). Unused space stays zero.")
+        for part in parts:
+            if part.name == "skills" and any(alt.startswith("skills-") for alt in alt_names):
+                if "skills" in alt_names:
+                    raise DfuFlashError("The DFU loader lists both a full skills target and skills chunks.")
+                _dump_skills_chunks(tools, port, part, alt_names, partial)
+            elif part.name in alt_names:
+                _read_then_splice(tools, port, part.name, part.size_bytes, partial, part.byte_offset)
+            else:
+                raise DfuFlashError(f"The DFU loader does not expose {part.name}.")
+            print(f"{part.name} read complete.")
+        partial.replace(dest)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+
+
+def _dump_skills_chunks(
+    tools: dict[str, Path],
+    port: str,
+    part: gpt.Partition,
+    alt_names: list[str],
+    dest: Path,
+) -> None:
+    expected = skills_chunks(part.size_bytes)
+    expected_names = [str(chunk["name"]) for chunk in expected]
+    found = [name for name in alt_names if name.startswith("skills-")]
+    if set(found) != set(expected_names):
+        raise DfuFlashError(
+            "The skills chunk list does not match the partition size. "
+            "Wanted " + ", ".join(expected_names) + "."
+        )
+    for index, chunk in enumerate(expected, 1):
+        alt = str(chunk["name"])
+        offset = part.byte_offset + int(chunk["offset_bytes"])
+        print(f"Reading skills chunk {index}/{len(expected)} ({alt})...")
+        _read_then_splice(tools, port, alt, int(chunk["size_bytes"]), dest, offset)
+
+
 def read_partition(tools: dict[str, Path], port: str, name: str, size: int, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.unlink(missing_ok=True)

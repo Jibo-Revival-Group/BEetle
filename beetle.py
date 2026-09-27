@@ -3,6 +3,7 @@
 
 Identity, calibration, and the rest of /var stay on the robot.
 --setup can write a Wi-Fi network onto the robot's existing var.
+--dump and --dump-var read the robot instead of writing it.
 """
 
 from __future__ import annotations
@@ -45,9 +46,10 @@ SAFE_PARTITIONS = ("rootfsA", "rootfsB", "services", "skills")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Flash a Jibo eMMC image over DFU. /var is left in place unless --setup writes Wi-Fi onto it."
+        description="Flash a Jibo eMMC image over DFU. /var is left in place unless --setup writes Wi-Fi onto it. "
+        "--dump and --dump-var read the robot instead."
     )
-    parser.add_argument("image", type=Path, help="Full eMMC image (.bin) to flash")
+    parser.add_argument("image", nargs="?", type=Path, help="Full eMMC image (.bin) to flash")
     parser.add_argument(
         "--partitions",
         help="Comma-separated subset to write (default: rootfsA,rootfsB,services,skills). var is refused.",
@@ -66,6 +68,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--ssid", help="Wi-Fi network name, used with --setup")
     parser.add_argument("--psk", help="Wi-Fi password, used with --setup. Empty string for an open network.")
+    parser.add_argument(
+        "--dump",
+        action="store_true",
+        help="Read the whole eMMC over DFU into work/jibo-full-dump.bin.",
+    )
+    parser.add_argument(
+        "--dump-var",
+        action="store_true",
+        help="Read /var over DFU into work/jibo-var-dump.bin.",
+    )
     return parser
 
 
@@ -161,8 +173,61 @@ def _extract_for_flash(image: Path, part: gpt.Partition, work: Path) -> Path:
     return dest
 
 
+def _dump_requested(args: argparse.Namespace) -> bool:
+    return bool(args.dump or args.dump_var)
+
+
+def _dump(args: argparse.Namespace) -> int:
+    if args.dump and args.dump_var:
+        print("Use either --dump or --dump-var.", file=sys.stderr)
+        return 2
+    if args.image or args.setup or args.partitions or args.write_only or args.ssid or args.psk is not None:
+        print("A dump does not take an image path or flash options.", file=sys.stderr)
+        return 2
+    work = (args.work or (REPO / "work")).resolve()
+    work.mkdir(parents=True, exist_ok=True)
+    dest = work / ("jibo-full-dump.bin" if args.dump else "jibo-var-dump.bin")
+    try:
+        tools = dfu_flash.require_tools()
+    except dfu_flash.DfuFlashError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    entered = False
+    try:
+        port = dfu_flash.enter(tools)
+        entered = True
+        if args.dump_var:
+            print(f"Reading /var into {dest.name}.")
+            dfu_flash.dump_var(tools, port, dest)
+        else:
+            dfu_flash.dump_emmc(tools, port, dest)
+        try:
+            dfu_flash.reset_robot(tools, port)
+        except dfu_flash.DfuFlashError as exc:
+            print(f"The dump is in {dest}. Reboot was not confirmed: {exc}")
+            print("Unplug USB and power-cycle.")
+            return 0
+    except KeyboardInterrupt:
+        again = " Power-cycle into RCM first." if entered else ""
+        flag = "--dump-var" if args.dump_var else "--dump"
+        print(f"\nStopped. The dump was not saved.{again} Re-run with {flag}.", file=sys.stderr)
+        return 130
+    except (BeetleError, dfu_flash.DfuFlashError, gpt.GptError) as exc:
+        print(str(exc), file=sys.stderr)
+        if entered:
+            print("Power-cycle into RCM before trying again.", file=sys.stderr)
+        return 1
+    print(f"Dump finished: {dest}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if _dump_requested(args):
+        return _dump(args)
+    if args.image is None:
+        print("An image path is required to flash. Use --dump or --dump-var to read the robot.", file=sys.stderr)
+        return 2
     if args.setup and args.partitions:
         print("Use either --setup or --partitions.", file=sys.stderr)
         return 2
