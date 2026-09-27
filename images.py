@@ -1,4 +1,4 @@
-"""debugfs and loop-mount helpers for Jibo ext partitions."""
+"""debugfs and FUSE mount helpers for Jibo ext partitions."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -197,6 +198,15 @@ def write_text(image: Path, path: str, text: str) -> None:
 
 def extract_partition(dump: Path, start_sector: int, size_sectors: int, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if _fs_type(dest.parent) == "btrfs":
+        # New images on a compressed btrfs cannot be loop-mounted until they
+        # are rewritten. Keep later extracts uncompressed.
+        subprocess.run(
+            ["btrfs", "property", "set", str(dest.parent), "compression", "none"],
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(["chattr", "+C", str(dest.parent)], capture_output=True, check=False)
     if dest.exists():
         dest.unlink()
     command = [
@@ -216,27 +226,90 @@ def extract_partition(dump: Path, start_sector: int, size_sectors: int, dest: Pa
         raise ImageError(f"extracted {dest.name} is {actual} bytes, expected {expected}")
 
 
+def _as_root(args: list[str]) -> list[str]:
+    if os.geteuid() == 0:
+        return args
+    return ["sudo", "-n", *args]
+
+
+def _fs_type(path: Path) -> str:
+    result = subprocess.run(
+        ["findmnt", "-no", "FSTYPE", "-T", str(path)],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def _fuse2fs() -> str:
+    """Return fuse2fs. This kernel ships the loop driver as a missing module."""
+    found = shutil.which("fuse2fs")
+    if found:
+        return found
+    if os.geteuid() != 0:
+        raise ImageError(
+            "fuse2fs is not installed, and this kernel has no usable loop devices. "
+            "Install it with: sudo pacman -S fuse2fs"
+        )
+    print("Installing fuse2fs. This kernel has no usable loop devices.")
+    result = subprocess.run(["pacman", "-S", "--needed", "--noconfirm", "fuse2fs"])
+    if result.returncode != 0:
+        raise ImageError("could not install fuse2fs. Install it with: pacman -S fuse2fs")
+    found = shutil.which("fuse2fs")
+    if not found:
+        raise ImageError("fuse2fs is still not on PATH after install")
+    return found
+
+
+def _replay_journal(image: Path) -> None:
+    """fuse2fs does not replay an ext4 journal, so e2fsck does that first."""
+    print(f"Checking {image.name} before mount. This can take a few minutes...", flush=True)
+    result = subprocess.run(
+        _as_root(["e2fsck", "-p", str(image)]),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode in (0, 1, 2):
+        return
+    detail = (result.stderr or result.stdout).strip()
+    raise ImageError(
+        "could not check " + image.name + " before mounting"
+        + (": " + detail if detail else f" (e2fsck exit {result.returncode})")
+    )
+
+
 @contextmanager
 def mount_rw(image: Path):
-    """Loop-mount an ext image read-write. Uses sudo when not already root."""
+    """Mount an ext image read-write through fuse2fs. Uses sudo when not already root."""
+    binary = _fuse2fs()
     mountpoint = Path(tempfile.mkdtemp(prefix="beetle-mnt-"))
-    mount_cmd = ["mount", "-o", "loop", str(image), str(mountpoint)]
-    umount_cmd = ["umount", str(mountpoint)]
-    if os.geteuid() != 0:
-        mount_cmd = ["sudo", "-n", *mount_cmd]
-        umount_cmd = ["sudo", "-n", *umount_cmd]
     try:
-        subprocess.run(mount_cmd, check=True, capture_output=True)
-    except subprocess.CalledProcessError as exc:
-        shutil.rmtree(mountpoint, ignore_errors=True)
-        detail = (exc.stderr or b"").decode("utf-8", errors="replace").strip()
-        raise ImageError(
-            "could not mount " + image.name + " read-write. "
-            "BEetle needs root (or passwordless sudo) for the skills image. "
-            + detail
-        ) from exc
-    try:
+        _replay_journal(image)
+        print(f"Mounting {image.name}...", flush=True)
+        mounted = subprocess.run(
+            _as_root([binary, "-o", "rw", str(image), str(mountpoint)]),
+            capture_output=True,
+            text=True,
+        )
+        if mounted.returncode != 0:
+            detail = (mounted.stderr or mounted.stdout).strip()
+            raise ImageError(
+                "could not mount " + image.name + " read-write"
+                + (": " + detail if detail else "")
+            )
+        for _ in range(50):
+            if mountpoint.is_mount():
+                break
+            time.sleep(0.1)
+        else:
+            raise ImageError("fuse2fs returned before " + image.name + " was mounted")
         yield mountpoint
     finally:
-        subprocess.run(umount_cmd, check=False)
+        subprocess.run(_as_root(["umount", str(mountpoint)]), capture_output=True, check=False)
+        if mountpoint.is_mount():
+            subprocess.run(
+                _as_root(["fusermount3", "-u", str(mountpoint)]),
+                capture_output=True,
+                check=False,
+            )
         shutil.rmtree(mountpoint, ignore_errors=True)

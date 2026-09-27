@@ -92,7 +92,11 @@ BEAM_GIT = "https://github.com/Jibo-Revival-Group/BEam.git"
 BENCH_GIT = "https://github.com/Jibo-Revival-Group/BEnch.git"
 
 
-def _fetch_latest(url: str, dest: Path) -> Path:
+def _fetch_latest(url: str, dest: Path) -> tuple[Path, bool]:
+    """Return the checkout and whether it was downloaded on this run."""
+    if (dest / ".git").is_dir():
+        print(f"Using the copy of {url} already in {dest.name}.")
+        return dest, False
     if dest.exists():
         shutil.rmtree(dest)
     print(f"Downloading {url} ...")
@@ -103,7 +107,7 @@ def _fetch_latest(url: str, dest: Path) -> Path:
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         raise BeetleError(f"Could not download {url}") from exc
-    return dest
+    return dest, True
 
 
 def _flash_names(spec: str | None, setup: bool) -> list[str]:
@@ -119,11 +123,15 @@ def _prepare_setup(
     bench: Path,
     ssid: str,
     psk: str,
+    refresh_skills: bool,
+    refresh_services: bool,
 ) -> None:
     print("Patching Wi-Fi into this robot's var...")
     patch_var.apply_wifi(paths["var"], ssid, psk)
-    images.remove(paths["skills"], patch_skills.STAMP_PATH)
-    images.remove(paths["services"], patch_services.STAMP_PATH)
+    if refresh_skills:
+        images.remove(paths["skills"], patch_skills.STAMP_PATH)
+    if refresh_services:
+        images.remove(paths["services"], patch_services.STAMP_PATH)
     print("Patching current BEam into skills...")
     patch_skills.apply(paths["skills"], beam)
     print("Patching current BEnch into services...")
@@ -197,9 +205,10 @@ def main(argv: list[str] | None = None) -> int:
     ready_to_write = not args.setup or args.write_only
     entered = False
     try:
+        refresh_skills = refresh_services = False
         if args.setup and not args.write_only:
-            beam = _fetch_latest(BEAM_GIT, work / "latest-BEam")
-            bench = _fetch_latest(BENCH_GIT, work / "latest-BEnch")
+            beam, refresh_skills = _fetch_latest(BEAM_GIT, work / "latest-BEam")
+            bench, refresh_services = _fetch_latest(BENCH_GIT, work / "latest-BEnch")
         port = dfu_flash.enter(tools)
         entered = True
         live = dfu_flash.read_layout(tools, port)
@@ -231,7 +240,15 @@ def main(argv: list[str] | None = None) -> int:
                 paths["var"] = var_dest
                 if beam is None or bench is None:
                     raise BeetleError("BEam and BEnch were not downloaded.")
-                _prepare_setup(paths, beam, bench, ssid, psk)
+                _prepare_setup(
+                    paths,
+                    beam,
+                    bench,
+                    ssid,
+                    psk,
+                    refresh_skills,
+                    refresh_services,
+                )
                 ready_to_write = True
             paths["var"] = var_dest
         elif args.write_only:

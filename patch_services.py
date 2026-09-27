@@ -66,20 +66,6 @@ class ServicesPatchError(RuntimeError):
     pass
 
 
-def _contains(image: Path, needle: str) -> bool:
-    encoded = needle.encode("utf-8")
-    tail = b""
-    with image.open("rb") as stream:
-        while True:
-            chunk = stream.read(8 * 1024 * 1024)
-            if not chunk:
-                return False
-            blob = tail + chunk
-            if encoded in blob:
-                return True
-            tail = chunk[-(len(encoded) - 1):] if len(encoded) > 1 else b""
-
-
 def _patch_jetstream(image: Path) -> bool:
     text = images.read_text(image, JETSTREAM_PATH)
     if text is None:
@@ -104,35 +90,12 @@ def _patch_jetstream(image: Path) -> bool:
 
 
 def _patch_backup_skip(image: Path) -> list[str]:
-    if not _contains(image, BACKUP_NEEDLE):
+    path = "/bin/jibo-ssm/lib/skills-service-manager.js"
+    text = images.read_text(image, path)
+    if text is None or BACKUP_NEEDLE not in text or BACKUP_MARKER in text:
         return []
-    patched: list[str] = []
-    with images.mount_rw(image) as root:
-        for dirpath, dirnames, filenames in os_walk_skip(root):
-            for name in filenames:
-                if not name.endswith(".js"):
-                    continue
-                path = Path(dirpath) / name
-                try:
-                    text = path.read_text(encoding="utf-8", errors="replace")
-                except OSError:
-                    continue
-                if BACKUP_NEEDLE not in text or BACKUP_MARKER in text:
-                    continue
-                path.write_text(text.replace(BACKUP_NEEDLE, BACKUP_REPLACEMENT), encoding="utf-8")
-                patched.append(str(path.relative_to(root)))
-    return patched
-
-
-def os_walk_skip(root):
-    import os
-    skip = {"node_modules"}
-    for dirpath, dirnames, filenames in os.walk(root):
-        # The backup site lives in SSM lib, not inside nested node_modules copies
-        # of unrelated packages. Still search jibo-ssm itself; skip only when the
-        # directory being walked is named node_modules below a lib folder.
-        dirnames[:] = [name for name in dirnames if name not in skip or "jibo-ssm" in dirpath]
-        yield dirpath, dirnames, filenames
+    images.write_text(image, path, text.replace(BACKUP_NEEDLE, BACKUP_REPLACEMENT, 1))
+    return [path]
 
 
 def _patch_reject(image: Path) -> bool:
@@ -171,11 +134,26 @@ def _stamp_current(root: Path) -> bool:
     return data.get("version") == STAMP_VERSION
 
 
+def _stamp_in_image(image: Path) -> bool:
+    text = images.read_text(image, "/" + STAMP_PATH)
+    if not text:
+        return False
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return False
+    return data.get("version") == STAMP_VERSION
+
+
 def install_bench(image: Path, bench_root: Path | None = None) -> bool:
     """Replace /usr/local with the sibling BEnch tree. Returns False when already installed."""
     source_root = (bench_root or default_bench_root()).resolve() / "usr" / "local"
     if not (source_root / "bin").is_dir():
         raise ServicesPatchError(f"BEnch tree not found at {source_root}")
+    if _stamp_in_image(image):
+        print("BEnch is already in this services image.")
+        return False
+    print("Mounting services and copying BEnch. This part takes a while.", flush=True)
     with images.mount_rw(image) as root:
         if _stamp_current(root):
             return False
@@ -184,6 +162,7 @@ def install_bench(image: Path, bench_root: Path | None = None) -> bool:
             dest = root / name
             if not source.exists():
                 continue
+            print(f"  Copying BEnch {name}/ ...", flush=True)
             if dest.is_dir() and not dest.is_symlink():
                 shutil.rmtree(dest)
             elif dest.exists() or dest.is_symlink():
@@ -191,6 +170,7 @@ def install_bench(image: Path, bench_root: Path | None = None) -> bool:
             shutil.copytree(source, dest, symlinks=True, ignore=patch_skills._ignore_copy)
         view = root / STARTUP_VIEW
         if view.is_file():
+            print("  Updating the startup view...", flush=True)
             view.write_text(show_lan_address(view.read_text(encoding="utf-8")), encoding="utf-8")
         stamp = root / STAMP_PATH
         stamp.parent.mkdir(parents=True, exist_ok=True)

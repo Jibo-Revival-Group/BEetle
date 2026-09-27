@@ -175,6 +175,17 @@ def _stamp_current(root: Path) -> bool:
     return data.get("version") == STAMP_VERSION
 
 
+def _stamp_in_image(image: Path) -> bool:
+    text = images.read_text(image, "/" + STAMP_PATH)
+    if not text:
+        return False
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return False
+    return data.get("version") == STAMP_VERSION
+
+
 def apply(image: Path, beam_root: Path | None = None) -> dict:
     beam = (beam_root or default_beam_root()).resolve()
     be_root = beam / "@be" / "be"
@@ -184,8 +195,18 @@ def apply(image: Path, beam_root: Path | None = None) -> dict:
     if not cert.is_file():
         raise SkillsPatchError(f"ISRG Root X1 certificate is missing: {cert}")
 
+    if _stamp_in_image(image):
+        print("BEam is already in this skills image.")
+        return {
+            "skills": [],
+            "reject_unauthorized": [],
+            "placeholders": "kept",
+            "cached": True,
+        }
+
     copied: list[str] = []
     patched: list[str] = []
+    print("Mounting skills and copying BEam. This part takes a while.", flush=True)
     with images.mount_rw(image) as root:
         if _stamp_current(root):
             return {
