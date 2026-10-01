@@ -57,7 +57,7 @@ class VarPatchTests(unittest.TestCase):
             self.assertEqual(images.read_bytes(image, "/jibo/identity.json"), before)
             self.assertEqual(patch_var.assess(image), "provisioned")
             creds = json.loads(images.read_text(image, "/jibo/credentials.json"))
-            self.assertEqual(creds["endpoint"], "http://joap.5x1.com:80")
+            self.assertEqual(creds["endpoint"], "https://api.5x1.com")
             self.assertEqual(creds["region"], "api")
             self.assertTrue(creds["accessKeyId"])
             self.assertTrue(creds["secretAccessKey"])
@@ -181,7 +181,7 @@ class VarPatchTests(unittest.TestCase):
             keys = json.loads(images.read_text(image, "/jibo/keys/keypair.json") or "")
             self.assertEqual(keys["PrivateKey"], "keep")
             creds = json.loads(images.read_text(image, "/jibo/credentials.json") or "")
-            self.assertEqual(creds["endpoint"], "http://joap.5x1.com:80")
+            self.assertEqual(creds["endpoint"], "https://api.5x1.com")
             self.assertTrue(creds["accessKeyId"])
             self.assertEqual(
                 images.read_text(image, "/jibo/identity.json"),

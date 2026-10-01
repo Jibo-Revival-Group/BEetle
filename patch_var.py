@@ -12,8 +12,8 @@ import images
 
 HUB_HOST = "api.5x1.com"
 HUB_PORT = 443
-# BEaker. No account login. The same fields BEach writes on a running robot.
-OTA_ENDPOINT = "http://joap.5x1.com:80"
+# BEefy. Update checks are forwarded to joap. No account login.
+OTA_ENDPOINT = "https://api.5x1.com"
 
 
 class VarPatchError(RuntimeError):
