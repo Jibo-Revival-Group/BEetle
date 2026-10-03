@@ -21,7 +21,8 @@ REJECT_PATHS = (
     "jibo/Jibo/Skills/@be/be/node_modules/@jibo/jibo-server-client/lib/http/node.js",
     "jibo/Jibo/Skills/oobe-config/node_modules/@jibo/jibo-server-client/lib/http/node.js",
 )
-STAMP_VERSION = 1
+# Version 2 installs the native Jetstream Home Assistant command receiver.
+STAMP_VERSION = 2
 STAMP_PATH = "jibo/.beetle-skills.json"
 
 
