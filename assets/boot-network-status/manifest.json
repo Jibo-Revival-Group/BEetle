@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "target": "/usr/local/bin/jibo-ssm/startup/startup-view.js",
+  "variants": [
+    {
+      "stock_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+      "asset": "startup-view.js",
+      "patched_sha256": "3f21af2c709030ae07c88638061094b4d6630b4bc77164dda327d29da9877bd6",
+      "renderer": "x11"
+    },
+    {
+      "stock_sha256": "8f2ba0385c5030d5bf2d86214eb28f272866b72d5ea825cd44650b278e0b1d19",
+      "asset": "startup-view-x11-early.js",
+      "patched_sha256": "3aabd7077dbbae494014aa4f6b2276f50c7ab7ac9a8ae822b10779b03c930c6a",
+      "renderer": "x11-early"
+    },
+    {
+      "stock_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+      "asset": "startup-view-dom.js",
+      "patched_sha256": "60e01ecee4e096de247b3617f81b6c5c4381358ddbb278451176c7c9794df26a",
+      "renderer": "dom"
+    },
+    {
+      "stock_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+      "asset": "startup-view-dom.js",
+      "patched_sha256": "60e01ecee4e096de247b3617f81b6c5c4381358ddbb278451176c7c9794df26a",
+      "renderer": "dom"
+    }
+  ],
+  "files_sha256": {
+    "startup-view.js": "3f21af2c709030ae07c88638061094b4d6630b4bc77164dda327d29da9877bd6",
+    "startup-view-x11-early.js": "3aabd7077dbbae494014aa4f6b2276f50c7ab7ac9a8ae822b10779b03c930c6a",
+    "startup-view-dom.js": "60e01ecee4e096de247b3617f81b6c5c4381358ddbb278451176c7c9794df26a",
+    "boot-network-status.sh": "bf22f19920ecff31cb52ad34cc5eb6c156087901b578848d7824b81efe15bb57"
+  }
+}

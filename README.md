@@ -163,6 +163,49 @@ Use `--out /path/to/new/directory` with `backup-var` to force a fresh read for c
 
 If an update stops mid-flash, leave the robot in DFU. `flash-update PACKAGE --preserve-var --resume-from /path/to/update-manifest.json --yes` reuses the existing `var` backup without dumping live `var` again. It skips a recorded completed compact transfer when its image hash matches; incomplete compact transfers are read back before deciding whether to repeat them. A record made by the older full-partition writer is reflashed from the compact stock images because its hashes refer to a different image layout. If the failure happened before any backup or partition write, rerun normally without `--resume-from`. Add `--verify-readback` to compare each new transfer before reset.
 
+## Boot-screen Wi-Fi/IP diagnostic (USB-only setup)
+
+In **Set mode and configure Wi-Fi**, developer and int-developer modes default
+**Show Wi-Fi status and IP on the boot screen** to ON. Select **Leave the
+current boot-screen setting unchanged** to retain the previous fast file-only
+path. Install or removal intentionally uses the existing full-var backup,
+confirmation, write and SHA-256 readback transaction, with mode and Wi-Fi in the
+same candidate image. The guided confirmation discloses the larger transfer.
+It does not require networking, cloud access, SSH or an OTA on the robot.
+
+The assets live under `/var/jibo/phoenix/network-status/`; one guarded `lo`
+`post-up` line in `/var/etc/network/interfaces` binds the matching renderer over
+the read-only SSM startup-view file **in memory only**, before X11/SSM starts.
+The services partition is never rewritten or remounted read-write. Unknown/custom
+SSM hashes safely keep the stock screen. The diagnostic is suppressed outside
+developer modes and shows only current Wi-Fi association and a usable wlan0 IPv4
+address, not saved credentials. Renderer polling has timeouts and stops when the
+startup window loses ownership.
+
+Removal is under **More tools → Remove boot-screen Wi-Fi/IP status** or in the
+developer-mode setup selector. It removes only the toolkit-owned files and
+loopback line; mode, saved Wi-Fi, identity and calibration are retained. Reboot
+after removal; an existing bind mount lasts for the current boot.
+
+Equivalent CLI operations (explicit confirmation is still required):
+
+```bash
+# Defaults to install for developer modes; password is prompted securely.
+python3 jibo_dfu.py set-mode-wifi --mode int-developer --ssid 'Your network'
+# Use --boot-network-status keep to opt out, or remove to remove in the same edit.
+python3 jibo_dfu.py boot-network-status remove
+# Offline edit of a saved var copy; the source image is never modified:
+python3 jibo_dfu.py edit-boot-network-status backup-var.img install --out candidate-var.img
+```
+
+`assets/boot-network-status/manifest.json` pins four stock hashes to three
+renderer assets: legacy Electron DOM, early X11 without ScreenScheduler, and
+current X11. Offline release checks cover the 40 candidate packages found in the
+archive's production/stable/production-OTA/SQA indexes through 13.0.0, including
+additional beta/EFT candidates. This is **not hardware boot or DFU evidence**;
+real first-boot/USB installation remains a release gate. For a new/custom hash,
+review its source and init/layout before adding a pin; never bypass the hash guard.
+
 ## Hardware results and remaining work
 
 On Moth, ShofEL started the RAM loader and the robot entered DFU on the same USB port. Two consecutive 17 KiB GPT marker reads in one DFU session validated the partition layout. A full DFU read of `var` took 116.9 seconds and produced exactly 524,288,000 bytes with SHA-256 `4a58631e0c6eb0559bef7d2827676a1bce7965886f2887afbdc65dedce18416b`. That matched Moth's September read-only ShofEL `var` backup byte for byte. The temporary comparison copy was removed; neither validation wrote eMMC. An older full eMMC dump from June has different `var` contents, so it is not the matching reference for this test.

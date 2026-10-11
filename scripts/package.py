@@ -128,6 +128,23 @@ def main():
     for name, path in sources.items():
         data[name] = _read_file(parser, name, path)
 
+    asset_directory = ROOT / "assets/boot-network-status"
+    manifest_raw = _read_file(parser, "Boot network status manifest", asset_directory / "manifest.json")
+    try:
+        asset_manifest = json.loads(manifest_raw)
+        assets = asset_manifest["files_sha256"]
+        if set(assets) != {"startup-view.js", "startup-view-x11-early.js", "startup-view-dom.js",
+                           "boot-network-status.sh"}:
+            raise ValueError("unexpected asset list")
+        for name, expected in assets.items():
+            content = _read_file(parser, name, asset_directory / name)
+            if hashlib.sha256(content).hexdigest() != expected:
+                raise ValueError("asset checksum mismatch")
+            data["assets/boot-network-status/" + name] = content
+    except (ValueError, KeyError, TypeError) as exc:
+        parser.error("Boot network status assets are invalid: " + str(exc))
+    data["assets/boot-network-status/manifest.json"] = manifest_raw
+
     for name, content in data.items():
         if b"PRIVATE KEY-----" in content:
             parser.error("Private key material detected in " + name)

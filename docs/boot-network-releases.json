@@ -1,0 +1,1842 @@
+[
+  {
+    "name": "jibo-pvt-flash-build-8.13.0-20170913.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-8.13.0-20170913.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "e2a592578fdc7e0977d1844f5b4a252b8084178e3310e6666523deab06f2d618",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "10.3.0",
+    "startup_view_sha256": "8f2ba0385c5030d5bf2d86214eb28f272866b72d5ea825cd44650b278e0b1d19",
+    "renderer": "x11-early",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-09-13 10:51:21 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "88513ccffa58fae9010d7c0d038c9c2743f1849719493581943109840b377bac",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-8.16.0-20171004.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-8.16.0-20171004.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "170e849a984f8dd094c05f46ab0fe87a404205a67bebc089a017544253b8a832",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "10.5.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-10-06 11:21:33 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "bc09dbb15cc1ee51f1f1a84abe76fc2c29c3b7d4e40f92f0c4d4c9087e1558b7",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-8.19.0-20171018.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-8.19.0-20171018.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "afe02377e948e7bc8ce53b36f53e7173839da99c02fe25b72a8b2d608344f107",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "10.5.1-78b7102",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-10-18 11:52:07 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "7aa7e7f2f0ed75ed41b9204e1ba1b441fd284048eaab234bac53eea4809abf31",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-RTM2-3.0.8-20170220.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-RTM2-3.0.8-20170220.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "abaffcc98bb644eb716280895ea61e1fd1d28609a0916939535f5ccb768fb542",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "3.8.1",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "4.1.2",
+    "init_order": [
+      "S40network",
+      "S70start-X11",
+      "S81jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-02-19 11:48:14 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "344f7048bcd1b95aca4d01c85d86ab659765040e0ca53be410a74db472fbdfe1",
+    "inittab_sha256": "ea5597360e53721168a662eae402a04564f5724e8def3c492bfc3e23c97e5ef4",
+    "fstab_sha256": "269def7876bf83454e0c906d9f02c01641c23d6b283a8c21fffacbb86908c4d7",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v4.1.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-RTM2-3.0.9-20170303.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-RTM2-3.0.9-20170303.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "0cfe3f366d0c0c1aee84536623773755ea0c2ef7eef0e7ecdb0d4617092523a9",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "3.8.3",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "4.1.2",
+    "init_order": [
+      "S40network",
+      "S70start-X11",
+      "S81jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-03-03 12:42:08 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "0415cfdb98f34758616eabfb814af919e8f7e389a3bbda02e129cc140db18b84",
+    "inittab_sha256": "ea5597360e53721168a662eae402a04564f5724e8def3c492bfc3e23c97e5ef4",
+    "fstab_sha256": "269def7876bf83454e0c906d9f02c01641c23d6b283a8c21fffacbb86908c4d7",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v4.1.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-RTM3-3.3.4-20170623.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/release-production/jibo-pvt-flash-build-RTM3-3.3.4-20170623.tar.bz2",
+    "directory": "release-production",
+    "scope": "RTM/production",
+    "archive_sha256": "225bc6721808d907a3acbc5c17b3d9ad6a8e5b5ed444a85ccee5cb7a50d228d8",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "3.8.3",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "4.1.2",
+    "init_order": [
+      "S40network",
+      "S70start-X11",
+      "S81jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-06-23 10:44:03 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "71d90360a016085c3a71ebdfb7b1012dcdd9d12286ba14eb5b3ef0f0cb383a7f",
+    "inittab_sha256": "ea5597360e53721168a662eae402a04564f5724e8def3c492bfc3e23c97e5ef4",
+    "fstab_sha256": "269def7876bf83454e0c906d9f02c01641c23d6b283a8c21fffacbb86908c4d7",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v4.1.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-3.0.8-RTM-2.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/stable-builds/jibo-pvt-flash-3.0.8-RTM-2.tar.bz2",
+    "directory": "stable-builds",
+    "scope": "RTM/production",
+    "archive_sha256": "cb38d78d021eaaeac338e891169b135c49a12a2e31bbe975d53786d31d27270a",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "3.8.1",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "4.1.2",
+    "init_order": [
+      "S40network",
+      "S70start-X11",
+      "S81jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-02-11 12:14:07 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "e310501a366238119695011e5390b0f3fca806fdee7ccbd108ed7fe8a385b3c5",
+    "inittab_sha256": "ea5597360e53721168a662eae402a04564f5724e8def3c492bfc3e23c97e5ef4",
+    "fstab_sha256": "269def7876bf83454e0c906d9f02c01641c23d6b283a8c21fffacbb86908c4d7",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v4.1.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.3.0-EFT.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/stable-builds/jibo-pvt-flash-build-5.3.0-EFT.tar.bz2",
+    "directory": "stable-builds",
+    "scope": "additional archived candidate",
+    "archive_sha256": "c797c84be86901a554417b7020f4d8eac49ed55e5df67329342fe4f2fa8ffb99",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "5.2.0",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-03-15 19:36:00 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "2124725b59a2cbbe1cca73dd00c6054256aa4042343cc0a7ce4119ded4d04ea9",
+    "inittab_sha256": "465d87137ca7804d8c1e55c364e942ec151d354b46035fb630c5117d203f2373",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.4.0-EFT.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/stable-builds/jibo-pvt-flash-build-5.4.0-EFT.tar.bz2",
+    "directory": "stable-builds",
+    "scope": "additional archived candidate",
+    "archive_sha256": "d40989ec57721071ca819aad9a77b7b9102b48101d6d448d6ce4a869ef974864",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "5.2.1",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-03-17 12:10:03 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "91e583c0f65bf98a980dec7d87c92a2aef1b07a2a754984e8edf4230e1f96e9c",
+    "inittab_sha256": "465d87137ca7804d8c1e55c364e942ec151d354b46035fb630c5117d203f2373",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.5.0.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/stable-builds/jibo-pvt-flash-build-5.5.0.tar.bz2",
+    "directory": "stable-builds",
+    "scope": "additional archived candidate",
+    "archive_sha256": "2fdd514ed8d7c9f982c86f71565477e0ac278af72eaf6104140279ebc3b19aa3",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "6.0.0",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-03-31 16:02:00 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "f03c2649f18e731febd71574eac0305e41f3ef99f408176f664cbd24e5b2b041",
+    "inittab_sha256": "465d87137ca7804d8c1e55c364e942ec151d354b46035fb630c5117d203f2373",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-8.1.0-20170531-BETA-3.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-8.1.0-20170531-BETA-3.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "additional archived candidate",
+    "archive_sha256": "97f332657bd9bb8b6fbbb686e54166dc4723f74b77c7650ab7d473d84f1f7e4e",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "7.3.7",
+    "startup_view_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-05-30 22:20:16 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "15516d810beeb081ba717db2c6e02a73daf766903a4a8de22b000629376defba",
+    "inittab_sha256": "31f1d83a19b2bbd58c80f6f9de7ecfabde8d43ab1953f6869884e5528573ced9",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-8.1.1-20170531-BETA-3.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-8.1.1-20170531-BETA-3.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "additional archived candidate",
+    "archive_sha256": "22d11c043cf91e60155e5c77fd729fdf169fbd6c5b4902449afc5035b1a81cec",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "7.3.9",
+    "startup_view_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-05-31 17:39:04 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "055f94c0a4a0235489d1b8766794df4e6e948d27f1a1c2183f1e2caa493c04ae",
+    "inittab_sha256": "31f1d83a19b2bbd58c80f6f9de7ecfabde8d43ab1953f6869884e5528573ced9",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-8.1.2-20170601-BETA-3.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-8.1.2-20170601-BETA-3.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "additional archived candidate",
+    "archive_sha256": "50ede7368aa8014ad97541f1f7bac8d06d31de3b5f167edc6fe7087b392a1fbf",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "7.3.9",
+    "startup_view_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-06-01 16:20:17 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "3d551f2417274bd017317d5e8356829e77b327721ea682b032159ec12659a514",
+    "inittab_sha256": "31f1d83a19b2bbd58c80f6f9de7ecfabde8d43ab1953f6869884e5528573ced9",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-8.1.3-20170601-BETA-3.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-8.1.3-20170601-BETA-3.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "additional archived candidate",
+    "archive_sha256": "a109521fc81be35ffd49a985ca0ab069ee6af1796b0b9b54885b20dd745643ec",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "7.3.10",
+    "startup_view_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-06-01 22:01:30 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "999dff2f36b3f8b22ade4677a4a695c7a636357bc7dcc5c32fd1294c7c5cffe7",
+    "inittab_sha256": "31f1d83a19b2bbd58c80f6f9de7ecfabde8d43ab1953f6869884e5528573ced9",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-8.2.0-20170620-BETA-3.1.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-8.2.0-20170620-BETA-3.1.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "additional archived candidate",
+    "archive_sha256": "7238f50a38403cd37234b910dc73df482039cbb0e6ea5d6097ecbc973755989f",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "7.3.12",
+    "startup_view_sha256": "f7042f1bcdc0d4120ca315633a447460bbd01b9806281544a49ec28321ce2ff7",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-06-20 11:34:03 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "94ced0721719a871650881db59341d89cd3a7770466364fc2e11e2fb3a6554fc",
+    "inittab_sha256": "31f1d83a19b2bbd58c80f6f9de7ecfabde8d43ab1953f6869884e5528573ced9",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.0.1-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-build-5.0.1-production.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "RTM/production",
+    "archive_sha256": "709fc4971af7e5f957c2e77328b73d3577b3a27f7c75018536af2c89d1698ed4",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "4.3.0",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S40network",
+      "S70start-X11",
+      "S81jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-02-21 09:28:14 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "a298f7240da0ff5ce0ec497ea4e2aa3f1a216eaf050cfeddbec1b15dca62eb86",
+    "inittab_sha256": "a87cbd6b9f074b1714cc4eda3826630c9ab465e272796442cd55ae0f33dedccd",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.4.0-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-build-5.4.0-production.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "RTM/production",
+    "archive_sha256": "374d3cb58641d5026ceeaf702008718a895abf0e8f8d8c4d5b0963bed8f252ea",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "5.2.1",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-04-05 18:13:49 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "8cf9971bf091da0a2f8f6a3bf38cdc8d7161b7469e7e928e3d46a7215bc78f5f",
+    "inittab_sha256": "465d87137ca7804d8c1e55c364e942ec151d354b46035fb630c5117d203f2373",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-5.4.2-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/ota-production-release/jibo-pvt-flash-build-5.4.2-production.tar.bz2",
+    "directory": "ota-production-release",
+    "scope": "RTM/production",
+    "archive_sha256": "e81a87272749f13b894d96c3120215089e149f454eda0aa14bf780f98ba3f2ca",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "5.2.1",
+    "startup_view_sha256": "ba8b9c43dd1e1017bface6886ddfe72a9f6e1bbcf2f5710a37460e6082f18848",
+    "renderer": "dom",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-04-13 07:14:42 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "a9252e857920ac9c67d7f90f56866d0e8c16cd4310d4911d8d6ff08ce63a5794",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "d4fef78c661488ab8af3676ac664b48680ece4d8b25cdcb0643e6ae143ce71d8",
+    "inittab_sha256": "465d87137ca7804d8c1e55c364e942ec151d354b46035fb630c5117d203f2373",
+    "fstab_sha256": "fec9de10ccbc7162de72ce17db711a961eab45f36ac4e5ee661ac99cd0e4ceba",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,rw /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\trw\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.5.0-20171024-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.5.0-20171024-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "7d908644535a3cb014a28c538b14fd461c327f85156bb8a20f4a3871b659cded",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.0.3",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-10-24 10:51:09 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "71651b206122e37527bff07c4c539c881d5a0c098d120432254d72be953927bc",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.8.0-20171127-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.8.0-20171127-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "6a208b54b9ab2e66102930e75ac466ca615f18d006c2997a86d9f46d35ade4bc",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.2.0",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-11-27 09:59:53 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "920c06c368dc9838933cac58646a66f3cacbdb83418382e0e1a79a59212a776b",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.8.4-20171129-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.8.4-20171129-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "de2b1afa6ea727c498195d05d59083390bd9dcbcefd02f950f94066a8a645e79",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.3.0",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-11-29 14:48:50 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "87d7d2a833290161b0c42d266d0b502d621fb97d96a1ad2e0fa81e2ab883a909",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.8.6-20171212-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.8.6-20171212-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "d5ff483fc1a1d33724d1a02123b25e0c3a4292db0915f76e2f94c32ee032eaf3",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.4.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-12-12 07:45:19 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "dc21fb70a3ff38c13b82eb8a97de67eff770d173192a7a635f2b50574cf1fdc2",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.8.8-20171217-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.8.8-20171217-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "1f2d8c787e4a5f27413c296fdc6dc83853a9766c1d471f6c3078c18ab5a26950",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.4.2",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-12-17 22:30:34 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "665ac2b382aa96bbc25b79c29871043a6caac05abfed8483fb48112b0d56f123",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-9.12.0-20180103-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-9.12.0-20180103-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "7bafc638e0a3e4310f02400d2333589c3fb66c256954fae44bc76bb1257194e9",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.5.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-01-03 08:27:09 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "4439a331406e770333f73b2deb0e12ee50679b1bce4679adc1ec4c2491980c8c",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.1.0-20171228-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.1.0-20171228-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "0015cb004174d05859847514383f7c19e1ef702214f3e7c1440702bd09268bc5",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.5.0",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2017-12-28 16:38:02 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "73877f06f490adfd06402bb4d73523ac49657891cd5c15ff3b70322b2632cd96",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.2.0-201801010-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.2.0-201801010-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "07c9a862697d19085e1839dbd82ba795c0a8cff87b792735cd116c2deb461a7f",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.6.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-01-10 17:33:22 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "c97decc257692d5ed4a524c9a8a9c98f9fef2eba3de9d4935673281c8471690d",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.3.0-20180116-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.3.0-20180116-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "74355492e90265425aa49c1fb19cf3a961ca0f529ede9202a144aea667299ef5",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.7.0",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-01-16 15:39:17 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "7b12e73eb1ac96edf970103b12f4b990334836d257c11d6b871ca9a292c0454e",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.4.0-20180122-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.4.0-20180122-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "3589c571bc84a251d641ce4b0ca309eedcff0c83616dd04e9fcee6d6108d213b",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "11.8.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-01-22 11:47:47 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "7c82d13cf2076d4d092478dc802c2fad2288672e3cce29ad017bbba453c87598",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.5.7-20180208-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.5.7-20180208-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "4d2ef7e052da80abd55cafcfd3f9ca145d8a5dd847ebe0f89eaaf9be28d674b5",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "12.0.4",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-02-08 14:46:51 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "60601029dd2b4a11136769aa8d3952f28317fddb9649dd4abbfdb21646aba0e2",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.5.8-20180216-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.5.8-20180216-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "e61d21137960c7fb666b783fbcfc3766b99bc002e8ebb2beacaf5beea360d7da",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.1",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-02-16 15:50:00 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "5933a95acb1b28134f3f21f65f320b0559f8f3a560c2d6046f6998d249946ac4",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-10.5.9-20180218-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-10.5.9-20180218-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "204104d50945a3453bb0250d16a93213c4885af50ce8487e027d2e3abf3e7a31",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.2",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-02-18 14:30:45 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "25e2492c54b2f16439a2c518bcc038a90b188dc8227b647e5aa078306c512e97",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-11.1.0-20180222-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-11.1.0-20180222-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "0b728d1bcc191f95a08e7738b2140627b3aae6b969cb53d26caf9ee8a21b629b",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.3",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-02-22 09:06:45 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "9abb8fc19462c3e456863cac7926ce2ed91f98342e7c89e4c3b292d1b8759e64",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-11.1.1-20180227-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-11.1.1-20180227-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "12d8c2b3b4c7b605b04059131e177735b1b876e313ae429150d4ea11e2fa45e1",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.6",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-02-27 21:01:07 PST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "48392e5467447294c9771b760b92b219abc59ed13b1bbf14d794528d4e049d56",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-11.7.0-20180312-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-11.7.0-20180312-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "7685805378e30c66e759e4f841b4e15e4d73a569abfcaaa33541e63cc3724d1c",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.9",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-03-12 15:17:09 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "57755fe58895120d27df300305a600dd79f7ad07df67a42757f67210b68ecb23",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-11.7.1-20180314-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-11.7.1-20180314-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "c6341fdd5c0286a7c0f310b7b4ffd59633e32a9fbc76c98c4629cd359e36e10b",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "13.0.9",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-03-14 16:05:02 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "119be61c2cd8579fc9236925787f750ecbb7e3ea9593219c337ae7a9270e268f",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-12.0.6-20180330-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-12.0.6-20180330-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "74b2bbeb3e7e518bc25dbf17a335b12412853e5d14cf493248a94420ae1be3a6",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "14.0.5",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-03-30 19:20:39 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "1a31c665746eb3ceaad3d255f14efe090036fa0e082f60db76212233ab9bdc6a",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-12.0.8-20180403-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-12.0.8-20180403-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "37b684ac383ba88657ac97924a19534cf8f8a1c35e146c22df833c60d0258b2b",
+    "checksum_source": "archive sha256.txt",
+    "ssm_version": "14.0.6",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-04-03 15:57:29 PDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "8cdc5ec636af0f89224a4da500445c19f91c6358a10fdb532d0bf893009975fd",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-12.7.0-20180517-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-12.7.0-20180517-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "911a822cec30c6bf81b4d6246cb999f1c65b7ecb2ca3efe2c0f7f3909a3f05cc",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "14.2.5",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-05-17 14:23:36 EDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "a442d15ae4ebe7f0be4a09fdaab244e58abd8aab8dac8b32b04e9ceee04850c5",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-12.10.0-20180823-production.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-12.10.0-20180823-production.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "c5b483c8956caa5d8706bdb01d0f8e7c390ee6e9714a0281a168c958b07967f6",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "14.2.9",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2018-08-23 12:19:40 EDT)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "8d528f34ab1cb134dfe7aa06749e9cc1d8255ee8b5e622fcbe80a5f6b303329b",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  },
+  {
+    "name": "jibo-pvt-flash-build-13.0.0-lastdance-rc2-20190225-prod.tar.bz2",
+    "url": "https://pvindex.org/repository/platformos/builds/sqa-testing/jibo-pvt-flash-build-13.0.0-lastdance-rc2-20190225-prod.tar.bz2",
+    "directory": "sqa-testing",
+    "scope": "RTM/production",
+    "archive_sha256": "8d41290549e183d79b71cf84f443ce87587fb875b04f1c272541ad5a01cf51ba",
+    "checksum_source": "computed, no published pin found",
+    "ssm_version": "16.0.0",
+    "startup_view_sha256": "66824555951d3be55d74f7d736655f11e945dea887e52f71ff2a5fa2064c14d6",
+    "renderer": "x11",
+    "compiled_node_version": "6.9.2",
+    "init_order": [
+      "S45network",
+      "S69start-X11",
+      "S78jibo-system-manager"
+    ],
+    "busybox_bind_evidence": [
+      "\t[r]bind\t\tBind a file or directory [recursively] to another location",
+      "BusyBox v1.24.1 (2019-02-24 14:40:47 EST)",
+      "syslogd started: BusyBox v1.24.1"
+    ],
+    "interfaces_sha256": "984ad9cd4ecd48506845e8e070eb7228dd5cfef6371dc77aab8d018ece6f5539",
+    "interfaces_symlink": "../../var/etc/network/interfaces",
+    "rootfs_sha256": "4749446457ed6e38b22bafcfccaceacf1ee48f730674af5f3ae40a4043828837",
+    "inittab_sha256": "3d69153b4e5a8c52440766ff05614a806d57112c5f13c6a576d134d2a5395e24",
+    "fstab_sha256": "2878977760c09a0d30be1564f663908c5eddd2745bf942b97d6e0ea180d53f58",
+    "pre_rcS_mount_lines": [
+      "::sysinit:/bin/mount -t proc proc /proc",
+      "::sysinit:/bin/mount -a",
+      "::sysinit:/bin/mount -o remount,ro /",
+      "::sysinit:/etc/init.d/rcS",
+      "::shutdown:/bin/umount -a -r"
+    ],
+    "fstab_mount_lines": [
+      "/dev/mmcblk0p4\t/usr/local\text4\tro\t\t0\t0",
+      "/dev/mmcblk0p5\t/var\t\text4\trw\t\t0\t0",
+      "tmpfs           /var/log\ttmpfs   mode=1777,size=64M,rw,noexec,nodev,nosuid       0       0"
+    ],
+    "verification": "offline only",
+    "display_tests_per_interpreter": 28,
+    "display_interpreters": [
+      "v6.5.0",
+      "v6.9.2"
+    ],
+    "hook_test": "passed; real layout/stock bytes, fake mount"
+  }
+]

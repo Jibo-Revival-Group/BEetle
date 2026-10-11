@@ -3,6 +3,7 @@ import io
 import json
 from contextlib import redirect_stderr
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -75,6 +76,11 @@ class PackageTests(unittest.TestCase):
             "jibo_updates.py", "jibo_tui.py",
             "tools/shofel2_t124", "tools/intermezzo.bin", "tools/dfu_stage2.bin",
             "tools/dfu-util",
+            "assets/boot-network-status/startup-view.js",
+            "assets/boot-network-status/startup-view-x11-early.js",
+            "assets/boot-network-status/startup-view-dom.js",
+            "assets/boot-network-status/boot-network-status.sh",
+            "assets/boot-network-status/manifest.json",
         }
         with zipfile.ZipFile(self.output) as archive:
             self.assertEqual(set(archive.namelist()), expected)
@@ -99,6 +105,28 @@ class PackageTests(unittest.TestCase):
                                 capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("enter-dfu-shofel", result.stdout)
+
+    @unittest.skipUnless(all(shutil.which(tool) for tool in ('mke2fs', 'debugfs', 'e2fsck')),
+                         'ext4 tools required')
+    def test_packaged_offline_install_uses_the_bundled_assets_after_extraction(self):
+        from test_boot_network_status import ImageInstallTests
+        import jibo_images
+        fixture = ImageInstallTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        self.run_package()
+        candidate = fixture.work / "packaged-installed.ext4"
+        developer_source = fixture.work / "developer-source.ext4"
+        jibo_images.edit_mode(fixture.source, developer_source, "int-developer")
+        result = subprocess.run([sys.executable, str(self.output), "edit-boot-network-status",
+                                 str(developer_source), "install", "--out", str(candidate)],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["boot_network_status"], "install")
+        for name, content in jibo_images.boot_network_status_assets().items():
+            self.assertEqual(jibo_images._extract(candidate, jibo_images.BOOT_NETWORK_STATUS_DIR + "/" + name,
+                                                 fixture.work / "packaged-readback"), content)
+        jibo_images._check_ext4(candidate)
 
     def test_loader_must_match_pinned_padded_size_and_hash(self):
         self.loader.write_bytes(b"different data")

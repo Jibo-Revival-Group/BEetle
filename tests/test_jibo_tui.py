@@ -600,7 +600,7 @@ class CursesPromptTests(unittest.TestCase):
         with patch.object(jibo_tui, "_select_mode", return_value="developer"), \
                 patch.object(jibo_tui, "text_input", side_effect=(
                     "Test Wi-Fi", "secret123", "secret123")), \
-                patch.object(jibo_tui, "select_option", return_value="protected"):
+                patch.object(jibo_tui, "select_option", side_effect=("protected", "keep")):
             result = jibo_tui.execute_action(api, "set-mode-wifi", readiness)
         self.assertEqual(result["status"], "verified")
         self.assertEqual(len(calls), 1)

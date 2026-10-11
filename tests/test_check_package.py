@@ -18,6 +18,7 @@ class CachedPackageTests(unittest.TestCase):
         self.source = self.root / "source"
         self.source.mkdir()
         for name in check_package.SOURCES:
+            (self.source / name).parent.mkdir(parents=True, exist_ok=True)
             (self.source / name).write_bytes(("content of " + name).encode())
         patch_path = self.source / "patches/shofel2-dfu-entry.patch"
         patch_path.parent.mkdir()

@@ -586,6 +586,142 @@ def build_stock_wifi_startup(existing, compact=False):
     return replacement, radio_adjusted, server_hook_added
 
 
+BOOT_NETWORK_STATUS_DIR = "/jibo/phoenix/network-status"
+BOOT_NETWORK_STATUS_HOOK = (
+    "post-up /bin/sh /var" + BOOT_NETWORK_STATUS_DIR + "/boot-network-status.sh || true")
+
+
+def build_boot_network_status_startup(existing, action):
+    """Add/remove only our exact loopback hook; refuse ambiguous boot layouts."""
+    if action not in ("install", "remove"):
+        raise ImageError("Boot network status action must be install or remove.")
+    try:
+        text = existing.decode("utf-8")
+    except (AttributeError, UnicodeDecodeError) as exc:
+        raise ImageError("The network interfaces file is not valid UTF-8.") from exc
+    if "\x00" in text or "\\\n" in text or "\\\r\n" in text:
+        raise ImageError("Unsupported network interfaces continuation or NUL.")
+    lines = text.splitlines(keepends=True)
+    loopbacks = []
+    auto_lo = 0
+    in_lo = False
+    hooks = []
+    for index, line in enumerate(lines):
+        active = line.split("#", 1)[0].strip()
+        parts = active.split()
+        if not parts:
+            continue
+        if parts[0] in ("source", "source-directory", "mapping"):
+            raise ImageError("External or mapped interfaces require manual review.")
+        if parts[0] in ("auto", "allow-auto"):
+            auto_lo += parts[1:].count("lo")
+        if parts[0] in ("iface", "auto") or parts[0].startswith("allow-"):
+            in_lo = parts == ["iface", "lo", "inet", "loopback"]
+        if parts[0] == "iface" and len(parts) > 1 and parts[1] == "lo":
+            if not in_lo or not line.endswith(("\n", "\r\n")):
+                raise ImageError("Unsupported loopback interface layout.")
+            loopbacks.append(index)
+        if "/var" + BOOT_NETWORK_STATUS_DIR in active or "boot-network-status.sh" in active:
+            if active != BOOT_NETWORK_STATUS_HOOK or not in_lo:
+                raise ImageError("Unknown or misplaced boot network status hook; no change was made.")
+            hooks.append(index)
+    if len(loopbacks) != 1 or auto_lo != 1 or len(hooks) > 1:
+        raise ImageError("Expected one automatic IPv4 loopback and at most one status hook.")
+    if action == "remove":
+        if hooks:
+            del lines[hooks[0]]
+    elif not hooks:
+        index = loopbacks[0]
+        newline = "\r\n" if lines[index].endswith("\r\n") else "\n"
+        lines.insert(index + 1, "\t" + BOOT_NETWORK_STATUS_HOOK + newline)
+    return "".join(lines).encode("utf-8")
+
+
+def boot_network_status_assets():
+    """Load bundled (also pyz-extracted) assets and reject a damaged bundle."""
+    directory = Path(__file__).resolve().parent / "assets/boot-network-status"
+    try:
+        raw = (directory / "manifest.json").read_bytes()
+        manifest = json.loads(raw)
+        if manifest["schema"] != 1 or manifest["target"] != "/usr/local/bin/jibo-ssm/startup/startup-view.js":
+            raise ValueError("unsupported manifest")
+        files = manifest["files_sha256"]
+        if set(files) != {"startup-view.js", "startup-view-x11-early.js", "startup-view-dom.js",
+                          "boot-network-status.sh"}:
+            raise ValueError("unexpected assets")
+        assets = {name: (directory / name).read_bytes() for name in files}
+        for name, content in assets.items():
+            if not content or len(content) > 262144 or hashlib.sha256(content).hexdigest() != files[name]:
+                raise ValueError("asset checksum mismatch")
+        for variant in manifest["variants"]:
+            if (not re.fullmatch(r"[0-9a-f]{64}", variant["stock_sha256"]) or
+                    variant["patched_sha256"] != files[variant["asset"]] or
+                    variant["stock_sha256"].encode() not in assets["boot-network-status.sh"] or
+                    variant["patched_sha256"].encode() not in assets["boot-network-status.sh"]):
+                raise ValueError("invalid variant pin")
+        assets["manifest.json"] = raw
+        return assets
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ImageError("The bundled boot network status assets are missing or invalid.") from exc
+
+
+def _boot_status_directory(image, path):
+    output = _run_debugfs(image, "stat " + path, allow_missing=True)
+    if re.search(r"File not found|ext2_lookup", output, re.IGNORECASE):
+        _run_debugfs(image, "mkdir " + path, writable=True)
+        for field, value in (("mode", "040755"), ("uid", "0"), ("gid", "0")):
+            _run_debugfs(image, "set_inode_field " + path + " " + field + " " + value, writable=True)
+    elif not re.search(r"\bType:\s+directory\b", output):
+        raise ImageError("Boot network status parent is not a directory: " + path)
+    if path == BOOT_NETWORK_STATUS_DIR:
+        for field, value in (("mode", "040755"), ("uid", "0"), ("gid", "0")):
+            _run_debugfs(image, "set_inode_field " + path + " " + field + " " + value, writable=True)
+
+
+def _apply_boot_network_status(image, temp, action, mode):
+    if action not in ("install", "remove"):
+        raise ImageError("Boot network status action must be install or remove.")
+    if action == "install" and mode not in ("developer", "int-developer"):
+        raise ImageError("Boot network status can only be installed in a developer mode.")
+    work = Path(temp)
+    original = _extract(image, VAR_INTERFACES_PATH, work / "status-interfaces")
+    replacement = build_boot_network_status_startup(original, action)
+    if action == "install":
+        assets = boot_network_status_assets()
+        for path in ("/jibo", "/jibo/phoenix", BOOT_NETWORK_STATUS_DIR):
+            _boot_status_directory(image, path)
+        for name, content in assets.items():
+            path = BOOT_NETWORK_STATUS_DIR + "/" + name
+            _put_factory_file(image, path, content, temp, 0o644)
+            for field, value in (("mode", "0100644"), ("uid", "0"), ("gid", "0")):
+                _run_debugfs(image, "set_inode_field " + path + " " + field + " " + value, writable=True)
+    else:
+        for path in (BOOT_NETWORK_STATUS_DIR + "/startup-view.js",
+                     BOOT_NETWORK_STATUS_DIR + "/startup-view-x11-early.js",
+                     BOOT_NETWORK_STATUS_DIR + "/startup-view-dom.js",
+                     BOOT_NETWORK_STATUS_DIR + "/boot-network-status.sh",
+                     BOOT_NETWORK_STATUS_DIR + "/manifest.json",
+                     BOOT_NETWORK_STATUS_DIR + "/boot-network-status.log"):
+            content = _extract(image, path, work / "remove-check", optional=True)
+            if content is not None:
+                _file_metadata(image, path)
+                _run_debugfs(image, "rm " + path, writable=True)
+            if _extract(image, path, work / "removed-check", optional=True) is not None:
+                raise ImageError("Boot network status removal did not survive readback.")
+    if replacement != original:
+        _replace_file(image, VAR_INTERFACES_PATH, replacement, temp)
+    return replacement
+
+
+def _verify_boot_network_status(image, temp, action):
+    if action == "install":
+        for name, content in boot_network_status_assets().items():
+            path = BOOT_NETWORK_STATUS_DIR + "/" + name
+            if (_extract(image, path, Path(temp) / "status-checked") != content or
+                    _file_metadata(image, path) != {"mode": "0100644", "uid": "0", "gid": "0"}):
+                raise ImageError("Boot network status content or permissions did not survive readback.")
+
+
 def _adjust_stock_wifi_startup(image, temp, compact=False):
     """Adjust stock wlan0 startup while a Wi-Fi edit is already in progress."""
     work = Path(temp)
@@ -639,7 +775,7 @@ def edit_wifi(source, destination, ssid, password=None, open_network=False,
 
 
 def edit_mode_wifi(source, destination, mode, ssid, password=None,
-                   open_network=False):
+                   open_network=False, network_status=None):
     """Apply mode and Wi-Fi to one disposable var copy and check both files."""
     if mode not in MODE_VALUES:
         raise ImageError("Mode must be one of: " + ", ".join(MODE_VALUES))
@@ -661,7 +797,11 @@ def edit_mode_wifi(source, destination, mode, ssid, password=None,
                 _replace_file(destination, VAR_WIFI_PATH, wifi_bytes, temp)
             startup_adjusted, hook_added, startup_expected = _adjust_stock_wifi_startup(
                 destination, temp, compact=True)
+            if network_status is not None:
+                startup_expected = _apply_boot_network_status(destination, temp, network_status, mode)
             _replay_journal_on_copy(destination)
+            if network_status is not None:
+                _verify_boot_network_status(destination, temp, network_status)
             final_mode = _json_mode(_extract(destination, VAR_MODE_PATH, work / "final-mode"))
             final_wifi = _extract(destination, VAR_WIFI_PATH, work / "final-wifi")
             if final_mode["mode"] != mode or final_wifi != wifi_bytes:
@@ -672,8 +812,28 @@ def edit_mode_wifi(source, destination, mode, ssid, password=None,
                 raise ImageError("The network startup file did not survive image readback.")
         return {"image": str(destination), "previous_mode": previous,
                 "mode": mode, "network_count": count,
+                "boot_network_status": network_status,
                 "rtm2_wifi_startup_adjusted": startup_adjusted,
                 "wifi_server_check_hook_added": hook_added,
+                "sha256": sha256_file(destination),
+                "journal_replayed_on_temporary_copy": repaired}
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+
+
+def edit_boot_network_status(source, destination, action):
+    """Install/remove without changing mode or saved networks on one var copy."""
+    source, destination, repaired = _copy_for_edit(source, destination)
+    try:
+        with tempfile.TemporaryDirectory(prefix="jibo-boot-status-", dir="/tmp") as temp:
+            mode = _json_mode(_extract(destination, VAR_MODE_PATH, Path(temp) / "mode"))["mode"]
+            expected = _apply_boot_network_status(destination, temp, action, mode)
+            _replay_journal_on_copy(destination)
+            _verify_boot_network_status(destination, temp, action)
+            if _extract(destination, VAR_INTERFACES_PATH, Path(temp) / "interfaces-final") != expected:
+                raise ImageError("The boot network status hook did not survive readback.")
+        return {"image": str(destination), "boot_network_status": action,
                 "sha256": sha256_file(destination),
                 "journal_replayed_on_temporary_copy": repaired}
     except Exception:

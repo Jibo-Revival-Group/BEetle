@@ -988,10 +988,30 @@ def execute_action(api, key, readiness):
             password = _confirmed_wifi_password("Set mode and configure Wi-Fi")
             if password is None:
                 return {"status": "cancelled", "message": "Wi-Fi setup was cancelled."}
+        network_status = None
+        if mode in ("developer", "int-developer"):
+            selected = select_option(
+                "Boot screen network status",
+                (("install", "Show Wi-Fi status and IP on the boot screen"),
+                 ("keep", "Leave the current boot-screen setting unchanged"),
+                 ("remove", "Remove the boot-screen Wi-Fi/IP status")),
+                prompt="This diagnostic uses only local network status, not the cloud.",
+                detail="Install/remove uses one full 500 MiB var transaction with mode and Wi-Fi, "
+                       "rollback backup and SHA-256 readback. No services partition is rewritten. "
+                       "Unknown SSM hashes safely keep the stock screen.", initial="install")
+            if selected is None:
+                return {"status": "cancelled", "message": "Mode and Wi-Fi were not changed."}
+            if selected not in ("install", "keep", "remove"):
+                raise ValueError("Unknown boot-screen setting.")
+            network_status = None if selected == "keep" else selected
         confirmation = lambda plan: confirm_action(
             "Confirm mode and Wi-Fi change",
-            _confirmation_details(plan, "Review both changes before writing to the robot."))
+            _confirmation_details(plan, "Review all changes before writing to the robot."))
         try:
+            if network_status is not None:
+                return api.set_mode_wifi_live(
+                    mode, ssid, password, open_network, port=readiness.port,
+                    confirmation=confirmation, network_status=network_status)
             if _can_edit_var_files(readiness):
                 try:
                     return api.set_mode_wifi_file_live(
@@ -1006,6 +1026,13 @@ def execute_action(api, key, readiness):
                                           port=readiness.port, confirmation=confirmation)
         finally:
             password = None
+    if key == "remove-boot-network-status":
+        if readiness.state != "dfu-ready":
+            raise RuntimeError("Boot-screen removal is available only while the robot is in DFU.")
+        confirmation = lambda plan: confirm_action(
+            "Confirm boot-screen status removal",
+            _confirmation_details(plan, "Remove only the diagnostic var files and loopback hook."))
+        return api.boot_network_status_live("remove", port=readiness.port, confirmation=confirmation)
     if key == "flash-update":
         return _run_update(api, port=readiness.port)
     if key == "more-tools":
@@ -1014,7 +1041,8 @@ def execute_action(api, key, readiness):
             options.extend((("probe-dfu-gpt", "Check partition layout"),
                             ("backup-partitions", "Back up selected partitions"),
                             ("restore-partitions", "Restore selected partitions"),
-                            ("write-var", "Write an edited var image")))
+                            ("write-var", "Write an edited var image"),
+                            ("remove-boot-network-status", "Remove boot-screen Wi-Fi/IP status")))
         options.extend((("inspect-backup", "Inspect a local var backup"),
                         ("edit-backup", "Edit a local var backup")))
         selected = select_option("More tools", options,

@@ -49,6 +49,20 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_macos.py -v
       - name: Test bounded DFU reads
         run: python3 -m unittest discover -s tests -p test_dfu_bounded.py -v
+      - name: Test boot-screen delivery and bundled renderers
+        run: |
+          brew install busybox coreutils node
+          ext4_prefix=$(brew --prefix e2fsprogs)
+          coreutils_prefix=$(brew --prefix coreutils)
+          export PATH="$ext4_prefix/sbin:$ext4_prefix/bin:$coreutils_prefix/libexec/gnubin:$PATH"
+          python3 -m unittest discover -s tests -p 'test_boot_network_status*.py' -v
+          python3 -m unittest discover -s tests -p test_boot_network_release_gate.py -v
+          python3 -m unittest discover -s tests -p test_package.py -v
+          python3 -m unittest discover -s tests -p test_check_package.py -v
+          node tests/startup-view.test.js
+          node tests/startup-view.test.js assets/boot-network-status/startup-view-x11-early.js
+          node tests/startup-view-dom.test.js
+          node tests/startup-view.test.js assets/boot-network-status/startup-view-dom.js '^(default source|source |UTF8)'
       - name: Test local ext4 update preparation
         run: |
           ext4_prefix=$(brew --prefix e2fsprogs)

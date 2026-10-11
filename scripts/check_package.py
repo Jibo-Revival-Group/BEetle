@@ -18,7 +18,12 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ("jibo_dfu.py", "jibo_dfu_bounded.py", "jibo_dfu_pipeline.py",
-           "jibo_images.py", "jibo_updates.py", "jibo_tui.py")
+           "jibo_images.py", "jibo_updates.py", "jibo_tui.py",
+           "assets/boot-network-status/startup-view.js",
+           "assets/boot-network-status/startup-view-x11-early.js",
+           "assets/boot-network-status/startup-view-dom.js",
+           "assets/boot-network-status/boot-network-status.sh",
+           "assets/boot-network-status/manifest.json")
 TOOLS = ("tools/shofel2_t124", "tools/intermezzo.bin",
          "tools/dfu_stage2.bin", "tools/dfu-util")
 

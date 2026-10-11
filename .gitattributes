@@ -2,3 +2,8 @@
 *.py text eol=lf
 *.patch text eol=lf
 *.ps1 text eol=lf
+
+# Preserve hash-pinned asset bytes on every desktop platform.
+assets/boot-network-status/* text eol=lf
+# Preserve vendor/prototype trailing spaces; other paths keep default checks.
+assets/boot-network-status/startup-view*.js whitespace=-blank-at-eol

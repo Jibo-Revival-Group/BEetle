@@ -2943,7 +2943,8 @@ def configure_wifi_live(ssid, password=None, open_network=False, port=None,
 
 
 def set_mode_wifi_live(mode, ssid, password=None, open_network=False,
-                       port=None, dfu_util=None, out=None, confirmation=None):
+                       port=None, dfu_util=None, out=None, confirmation=None,
+                       network_status=None):
     """Apply both changes with one var read, one write, and one readback."""
     if mode not in images.MODE_VALUES:
         raise DfuError("Mode must be one of: " + ", ".join(images.MODE_VALUES))
@@ -2955,8 +2956,9 @@ def set_mode_wifi_live(mode, ssid, password=None, open_network=False,
     try:
         state = _prepare_current_and_baseline(dfu_util, port, device_tag, directory)
         before = state["before"]
+        edit_options = {} if network_status is None else {"network_status": network_status}
         edit = images.edit_mode_wifi(before, candidate, mode, ssid,
-                                     password, open_network)
+                                     password, open_network, **edit_options)
         if edit.get("journal_replayed_on_temporary_copy"):
             print("Replayed the ext4 journal on the temporary working image before editing. The saved backup was not changed.")
         print("Mode change: " + edit["previous_mode"] + " → " + mode)
@@ -2968,11 +2970,14 @@ def set_mode_wifi_live(mode, ssid, password=None, open_network=False,
         operation = "set mode, save Wi-Fi network, and adjust Wi-Fi startup"
         if not (edit["rtm2_wifi_startup_adjusted"] or edit["wifi_server_check_hook_added"]):
             operation = "set mode and save Wi-Fi network"
+        if network_status is not None:
+            operation += "; " + network_status + " boot-screen Wi-Fi/IP status (var-only)"
         result = _write_candidate(candidate, before, directory, port, dfu_util,
                                   confirmation, operation,
                                   state["baseline"], state["before_sha256"],
                                   state["baseline_sha256"])
         result.update(current_mode=edit["previous_mode"], new_mode=mode,
+                      boot_network_status=network_status,
                       wifi_network_count=edit["network_count"], ssid=ssid,
                       rtm2_wifi_startup_adjusted=edit["rtm2_wifi_startup_adjusted"],
                       wifi_server_check_hook_added=edit["wifi_server_check_hook_added"],
@@ -2983,6 +2988,29 @@ def set_mode_wifi_live(mode, ssid, password=None, open_network=False,
         _raise_live_operation_error(directory, "set mode and save Wi-Fi network", state, exc)
     finally:
         password = None
+
+
+def boot_network_status_live(action, port=None, dfu_util=None, out=None, confirmation=None):
+    """Use the same backed-up, full-var hash-readback path; never writes services."""
+    if action not in ("install", "remove"):
+        raise DfuError("Boot network status action must be install or remove.")
+    dfu_util = dfu_util or tool("dfu-util")
+    port, _, device_tag = _dfu_context(port, dfu_util)
+    directory = _new_operation_dir(out, "boot-network-status")
+    state = None
+    candidate = directory / "edited-var.img"
+    operation = action + " boot-screen Wi-Fi/IP status (var-only)"
+    try:
+        state = _prepare_current_and_baseline(dfu_util, port, device_tag, directory)
+        edit = images.edit_boot_network_status(state["before"], candidate, action)
+        result = _write_candidate(candidate, state["before"], directory, port, dfu_util,
+                                  confirmation, operation, state["baseline"],
+                                  state["before_sha256"], state["baseline_sha256"])
+        result.update(boot_network_status=action,
+                      journal_replayed_on_temporary_copy=edit.get("journal_replayed_on_temporary_copy", False))
+        return result
+    except (DfuError, images.ImageError) as exc:
+        _raise_live_operation_error(directory, operation, state, exc)
 
 
 def _default_edit_path(image):
@@ -3108,6 +3136,27 @@ def main(argv=None):
     _add_dfu_argument(wifi_live)
     _add_operation_argument(wifi_live)
     _add_confirmation_argument(wifi_live)
+    combined = sub.add_parser("set-mode-wifi", help="Set mode, Wi-Fi and optional boot-screen status in one verified var write")
+    combined.add_argument("--mode", required=True, choices=images.MODE_VALUES)
+    combined.add_argument("--ssid", required=True)
+    combined.add_argument("--open-network", action="store_true")
+    combined.add_argument("--password-stdin", action="store_true")
+    combined.add_argument("--boot-network-status", choices=("install", "keep", "remove"),
+                          help="Default: install for developer modes, keep for other modes")
+    _add_device_arguments(combined)
+    _add_dfu_argument(combined)
+    _add_operation_argument(combined)
+    _add_confirmation_argument(combined)
+    boot_status = sub.add_parser("boot-network-status", help="Install/remove the var-only boot-screen diagnostic")
+    boot_status.add_argument("action", choices=("install", "remove"))
+    _add_device_arguments(boot_status)
+    _add_dfu_argument(boot_status)
+    _add_operation_argument(boot_status)
+    _add_confirmation_argument(boot_status)
+    status_edit = sub.add_parser("edit-boot-network-status", help="Install/remove the diagnostic on a local var copy")
+    status_edit.add_argument("image", type=Path)
+    status_edit.add_argument("action", choices=("install", "remove"))
+    status_edit.add_argument("--out", type=Path)
     read_file = sub.add_parser("read-partition-file",
                                help="Read one bounded file through DFU")
     read_file.add_argument("path", help="Absolute path inside the selected ext4 partition")
@@ -3237,6 +3286,24 @@ def main(argv=None):
             else:
                 result = set_mode_live(args.mode, args.port, dfu_util,
                                        args.operation_dir, confirmed)
+        elif args.command == "set-mode-wifi":
+            password = _password_from_args(args)
+            action = args.boot_network_status
+            if action is None:
+                action = "install" if args.mode in ("developer", "int-developer") else "keep"
+            result = set_mode_wifi_live(
+                args.mode, args.ssid, password, args.open_network,
+                port=args.port, dfu_util=tool("dfu-util", args.dfu_util),
+                out=args.operation_dir, confirmation="WRITE VAR" if args.yes else args.confirm,
+                network_status=None if action == "keep" else action)
+            password = None
+        elif args.command == "boot-network-status":
+            result = boot_network_status_live(
+                args.action, port=args.port, dfu_util=tool("dfu-util", args.dfu_util),
+                out=args.operation_dir, confirmation="WRITE VAR" if args.yes else args.confirm)
+        elif args.command == "edit-boot-network-status":
+            result = images.edit_boot_network_status(
+                args.image, args.out or _default_edit_path(args.image), args.action)
         elif args.command == "configure-wifi":
             password = _password_from_args(args)
             dfu_util = tool("dfu-util", args.dfu_util)
