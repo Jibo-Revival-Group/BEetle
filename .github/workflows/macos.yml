@@ -59,6 +59,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_boot_network_release_gate.py -v
           python3 -m unittest discover -s tests -p test_package.py -v
           python3 -m unittest discover -s tests -p test_check_package.py -v
+          node tests/ota-safe-overlay.test.js
           node tests/startup-view.test.js
           node tests/startup-view.test.js assets/boot-network-status/startup-view-x11-early.js
           node tests/startup-view-dom.test.js

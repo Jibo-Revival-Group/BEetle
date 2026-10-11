@@ -61,7 +61,16 @@ apply_status() {
         result=skipped-asset-hash
         return
     }
+    helper="$root/var/jibo/phoenix/network-status/ota-safe-overlay.js"
+    [ -f "$helper" ] && [ ! -L "$helper" ] || return
+    sum=$(bounded "$root/usr/bin/sha256sum" "$helper") || return
+    [ "${sum%% *}" = "a5e2bd2af5d33ee0e29af13ba84cb4933661787f2169017881e576ae5214f3e8" ] || return
+    bounded "$root/usr/bin/node" "$helper" check "$root" "$name"
+    [ "$?" = 1 ] || { result=skipped-ota; return; }
     bounded "$root/bin/mount" -n -o bind "$asset" "$target" || return
+    # Release the exact owned child bind when an OTA becomes pending. All I/O
+    # stays local. Detach stdio so this monitor cannot hold ifup/boot open.
+    "$root/usr/bin/node" "$helper" watch "$root" "$name" </dev/null >/dev/null 2>&1 &
     result=bound
 }
 

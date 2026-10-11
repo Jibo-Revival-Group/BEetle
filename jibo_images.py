@@ -647,7 +647,7 @@ def boot_network_status_assets():
             raise ValueError("unsupported manifest")
         files = manifest["files_sha256"]
         if set(files) != {"startup-view.js", "startup-view-x11-early.js", "startup-view-dom.js",
-                          "boot-network-status.sh"}:
+                          "boot-network-status.sh", "ota-safe-overlay.js"}:
             raise ValueError("unexpected assets")
         assets = {name: (directory / name).read_bytes() for name in files}
         for name, content in assets.items():
@@ -700,6 +700,7 @@ def _apply_boot_network_status(image, temp, action, mode):
                      BOOT_NETWORK_STATUS_DIR + "/startup-view-x11-early.js",
                      BOOT_NETWORK_STATUS_DIR + "/startup-view-dom.js",
                      BOOT_NETWORK_STATUS_DIR + "/boot-network-status.sh",
+                     BOOT_NETWORK_STATUS_DIR + "/ota-safe-overlay.js",
                      BOOT_NETWORK_STATUS_DIR + "/manifest.json",
                      BOOT_NETWORK_STATUS_DIR + "/boot-network-status.log"):
             content = _extract(image, path, work / "remove-check", optional=True)

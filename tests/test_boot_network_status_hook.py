@@ -1,5 +1,6 @@
 """Run the installed boot hook with BusyBox ash and a synthetic filesystem."""
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -29,6 +30,11 @@ class HookTests(unittest.TestCase):
         (self.root / "proc/self").mkdir(parents=True)
         (self.root / "proc/self/mountinfo").write_text("")
         (self.root / "usr/bin").mkdir(exist_ok=True)
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node is required for the OTA guard")
+        (self.root / "usr/bin/node").symlink_to(node)
+        (self.var / "ota-safe-overlay.js").write_bytes((ASSETS / "ota-safe-overlay.js").read_bytes())
         self.command(self.root / "usr/bin/jibo-getmode", "printf '%s\\n' \"${TEST_MODE:-int-developer}\"\n")
         self.tools = self.root / "bin"
         self.tools.mkdir()
@@ -98,6 +104,30 @@ class HookTests(unittest.TestCase):
         started = time.monotonic()
         self.assertEqual(self.run_hook(), [])
         self.assertLess(time.monotonic() - started, 4)
+
+    def test_pending_ota_cannot_acquire_a_services_child_mount(self):
+        (self.root / "var/jibo/ota.json").write_text(json.dumps({"idx": 0, "items": [{}]}))
+        self.assertEqual(self.run_hook(), [])
+        self.assertIn("skipped-ota", (self.var / "boot-network-status.log").read_text())
+
+    def test_completed_ota_history_does_not_disable_the_feature(self):
+        (self.root / "var/jibo/ota.json").write_text(json.dumps({"idx": None, "items": [{}]}))
+        self.assertEqual(len(self.run_hook()), 1)
+
+    def test_malformed_ota_state_is_fail_closed(self):
+        (self.root / "var/jibo/ota.json").write_text("invalid JSON")
+        self.assertEqual(self.run_hook(), [])
+
+    def test_missing_or_corrupt_release_helper_is_fail_closed(self):
+        helper = self.var / "ota-safe-overlay.js"
+        helper.unlink()
+        self.assertEqual(self.run_hook(), [])
+        helper.write_bytes(b"broken helper")
+        self.assertEqual(self.run_hook(), [])
+
+    def test_missing_node_is_fail_closed(self):
+        (self.root / "usr/bin/node").unlink()
+        self.assertEqual(self.run_hook(), [])
 
     def test_stock_hash_mismatch_is_noop(self):
         self.assertEqual(self.run_hook(TEST_STOCK_HASH="0" * 64), [])

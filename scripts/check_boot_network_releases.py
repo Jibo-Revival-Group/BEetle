@@ -78,6 +78,7 @@ def test_hook(directory, receipt, variant, node, assets):
         (root / 'proc/self').mkdir(parents=True)
         (root / 'proc/self/mountinfo').write_text('1 0 1:1 / /usr/local ro - ext4 /dev/svc ro\n')
         (root / 'usr/bin').mkdir()
+        (root / 'usr/bin/node').symlink_to(node)
         (root / 'bin').mkdir()
         real_sha = shutil.which('sha256sum')
         assert real_sha

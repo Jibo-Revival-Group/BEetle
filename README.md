@@ -206,6 +206,12 @@ additional beta/EFT candidates. This is **not hardware boot or DFU evidence**;
 real first-boot/USB installation remains a release gate. For a new/custom hash,
 review its source and init/layout before adding a pin; never bypass the hash guard.
 
+The hook suppresses the overlay during pending or malformed OTA work state and
+runs a local monitor to release its owned bind before services replacement.
+**Real services-OTA timing is not verified.** Until tested on hardware, remove
+this diagnostic through DFU and reboot before a services OTA, verifying there is
+no startup-view child bind. The monitor is not a synchronous updater handshake.
+
 ## Hardware results and remaining work
 
 On Moth, ShofEL started the RAM loader and the robot entered DFU on the same USB port. Two consecutive 17 KiB GPT marker reads in one DFU session validated the partition layout. A full DFU read of `var` took 116.9 seconds and produced exactly 524,288,000 bytes with SHA-256 `4a58631e0c6eb0559bef7d2827676a1bce7965886f2887afbdc65dedce18416b`. That matched Moth's September read-only ShofEL `var` backup byte for byte. The temporary comparison copy was removed; neither validation wrote eMMC. An older full eMMC dump from June has different `var` contents, so it is not the matching reference for this test.

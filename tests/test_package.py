@@ -80,6 +80,7 @@ class PackageTests(unittest.TestCase):
             "assets/boot-network-status/startup-view-x11-early.js",
             "assets/boot-network-status/startup-view-dom.js",
             "assets/boot-network-status/boot-network-status.sh",
+            "assets/boot-network-status/ota-safe-overlay.js",
             "assets/boot-network-status/manifest.json",
         }
         with zipfile.ZipFile(self.output) as archive:

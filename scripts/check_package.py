@@ -23,6 +23,7 @@ SOURCES = ("jibo_dfu.py", "jibo_dfu_bounded.py", "jibo_dfu_pipeline.py",
            "assets/boot-network-status/startup-view-x11-early.js",
            "assets/boot-network-status/startup-view-dom.js",
            "assets/boot-network-status/boot-network-status.sh",
+           "assets/boot-network-status/ota-safe-overlay.js",
            "assets/boot-network-status/manifest.json")
 TOOLS = ("tools/shofel2_t124", "tools/intermezzo.bin",
          "tools/dfu_stage2.bin", "tools/dfu-util")

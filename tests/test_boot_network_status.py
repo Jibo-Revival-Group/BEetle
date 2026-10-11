@@ -94,7 +94,7 @@ class ImageInstallTests(unittest.TestCase):
         self.assertIn(b"int-developer", self.get(destination, images.VAR_MODE_PATH))
         self.assertIn(b"boot-network-status.sh", self.get(destination, images.VAR_INTERFACES_PATH))
         assets = Path(images.__file__).parent / "assets/boot-network-status"
-        for name in ("startup-view.js", "boot-network-status.sh", "manifest.json"):
+        for name in images.boot_network_status_assets():
             self.assertEqual(self.get(destination, images.BOOT_NETWORK_STATUS_DIR + "/" + name),
                              (assets / name).read_bytes())
         self.assertEqual(self.get(destination, "/jibo/identity.json"),
@@ -145,7 +145,7 @@ class ImageInstallTests(unittest.TestCase):
         for path in (images.VAR_MODE_PATH, images.VAR_WIFI_PATH, "/jibo/identity.json"):
             self.assertEqual(self.get(removed, path), self.get(installed, path))
         self.assertNotIn(b"boot-network-status.sh", self.get(removed, images.VAR_INTERFACES_PATH))
-        for name in ("startup-view.js", "boot-network-status.sh", "manifest.json"):
+        for name in images.boot_network_status_assets():
             self.assertIsNone(self.get(removed, images.BOOT_NETWORK_STATUS_DIR + "/" + name, True))
         images._check_ext4(removed)
 

@@ -134,7 +134,7 @@ def main():
         asset_manifest = json.loads(manifest_raw)
         assets = asset_manifest["files_sha256"]
         if set(assets) != {"startup-view.js", "startup-view-x11-early.js", "startup-view-dom.js",
-                           "boot-network-status.sh"}:
+                           "boot-network-status.sh", "ota-safe-overlay.js"}:
             raise ValueError("unexpected asset list")
         for name, expected in assets.items():
             content = _read_file(parser, name, asset_directory / name)
