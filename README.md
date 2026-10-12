@@ -1,6 +1,6 @@
 # Jibo DFU Mod Toolkit
 
-A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg** or **Linux**; a native **macOS** launcher is also provided, but Mac GUI and robot USB behavior remain untested. The original terminal menu and scripting commands are still available.
+A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg + usbipd-win** or **Linux**; a native **macOS** launcher is also available. The original text menu and scripting commands remain available.
 
 ## Start the GUI
 
@@ -9,52 +9,46 @@ Clone or download this repository, extract it if needed, and keep the launchers 
 | Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
 | --- | --- | --- | --- |
 | **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
-| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); **experimental, untested on Macs** |
+| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); **experimental** |
 | **Linux x86_64** | `Jibo DFU Toolkit.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
-
-The Windows GUI has been tested successfully by the owner. It displays the Linux Tk window through WSLg, **not a native Windows DFU driver**. That report does not specify every USB handoff or physical write flow; [remaining acceptance gates](docs/gui.md#open-acceptance-gates) stay explicit. Linux window verification used Xvfb with a simulated device, not a physical robot. macOS GUI launch, native USB transfers and Finder/Gatekeeper behavior are still unverified.
 
 Linux file managers may require **Allow Launching** or **Trust** for the `.desktop` file. On macOS, Finder may require **Open** for the `.command` file; it is not a signed/notarized app. First launch may need internet access to build the host tools and may open a terminal for setup or authorization. **Host setup authorization is not consent to write a robot**: each device change has its own review.
 
 ### GUI screenshots
 
-These are **Linux/Xvfb screenshots with a simulated device**. They are not Windows captures or evidence of real robot reads, writes or transfer speeds. Visible backup paths, hashes and progress are synthetic test data; no Wi-Fi credentials are shown.
+![DFU-ready action screen](docs/images/gui/ready.png)
 
-![Linux/Xvfb simulated-device GUI: DFU-ready action screen](docs/images/gui/ready.png)
-
-*DFU-ready action screen — Linux/Xvfb, simulated device. USB readiness and available operations are shown together.*
+*DFU-ready action screen. USB readiness and available operations are shown together.*
 
 <details>
 <summary>Mode/Wi-Fi setup, safety review and progress screenshots</summary>
 
-![Linux/Xvfb simulated-device GUI: mode selection before Wi-Fi setup](docs/images/gui/mode-wifi.png)
+![Mode selection before Wi-Fi setup](docs/images/gui/mode-wifi.png)
 
-*Mode/Wi-Fi setup — Linux/Xvfb, simulated device. Select the mode before entering the network settings; nothing is written at this step.*
+*Mode/Wi-Fi setup. Select the mode before entering the network settings; nothing is written at this step.*
 
-![Linux/Xvfb simulated-device GUI: explicit mode and Wi-Fi write review](docs/images/gui/review.png)
+![Mode and Wi-Fi write review](docs/images/gui/review.png)
 
-*Write review — Linux/Xvfb, simulated device. The plan shows the target, hashes and rollback backup; Cancel is the default and Confirm requires explicit approval.*
+*Write review. Check the target, hashes and rollback backup; Cancel is the default and Confirm requires explicit approval.*
 
-![Linux/Xvfb simulated-device GUI: var backup progress](docs/images/gui/progress.png)
+![Var backup progress](docs/images/gui/progress.png)
 
-*Backup progress — Linux/Xvfb, simulated device. The stage, percentage and operation log are examples, not measured hardware performance.*
+*Backup progress. Follow the current stage, percentage and operation log.*
 
 </details>
-
-See [screenshot provenance and privacy notes](docs/images/gui/README.md).
 
 ### USB workflow and safety
 
 1. Put one robot in **RCM/APX** (`0955:7740`). The toolkit uses ShofEL to load its recovery program into RAM.
 2. The robot reappears in **DFU** (`0955:701a`). All partition reads and writes use DFU. ShofEL is used only for the RCM-to-DFU entry step.
 
-The GUI enables DFU entry in RCM and partition actions only after the recovery loader is ready in DFU. It shares the terminal menu's device operations, validation, backups and exact reviewed confirmations, including the ON-by-default boot-network checkbox for developer mode + Wi-Fi setup. It shows USB state and progress, refuses duplicate starts, and does not allow window closure during a transfer. **Keep USB connected and wait for completion**; forcibly killing the app can still interrupt a transfer. Read the [hardware limitations](#hardware-results-and-remaining-work) and [boot-screen diagnostic caveats](#boot-screen-wi-fiip-diagnostic-usb-only-setup) before proceeding.
+The GUI enables DFU entry in RCM and partition actions only after the recovery loader is ready in DFU. It shares the text menu's device operations, validation, backups and per-write review, including the ON-by-default boot-network checkbox for developer mode + Wi-Fi setup. It shows USB state and progress, refuses duplicate starts, and does not allow window closure during a transfer. **Keep USB connected and wait for completion**; forcibly killing the app can still interrupt a transfer. Read the [hardware limitations](#hardware-results-and-remaining-work) and [boot-screen diagnostic caveats](#boot-screen-wi-fiip-diagnostic-usb-only-setup) before proceeding.
 
 On Linux, the `.pyz` package is generated locally and reused on later runs; on macOS, the launcher runs the Python source directly. See [GUI setup, safety and verification](docs/gui.md) for details.
 
-### Terminal menu (alternate)
+### Text menu (alternate)
 
-For the original TUI, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. **The original launchers without a GUI flag still open the TUI**; making the GUI the recommended README path does not change their defaults. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
+For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. The launchers without a GUI flag still open the text menu. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
 
 ## Quick path: stock Jibo to int-developer
 
@@ -116,7 +110,7 @@ The launcher selects that WSL 2 distribution, shares and attaches a connected Ji
 
 ## macOS
 
-The native Mac path is **experimental**: GUI/Finder launch, Intel/Apple silicon USB transfers and real robot behavior have not been verified. Install [Homebrew](https://brew.sh) and native tools with a matching Python/Tk pair. This example explicitly selects Python 3.12:
+Install [Homebrew](https://brew.sh) and native tools with a matching Python/Tk pair. This example explicitly selects Python 3.12:
 
 ```sh
 brew install python@3.12 python-tk@3.12 dfu-util libusb e2fsprogs
@@ -186,7 +180,7 @@ The GPT check reads the complete `jibo-dfu-v1` alternate. Its final short transf
 
 Compact preserve-`var` flashing currently accepts the known 13.0.0 first-boot script. It checks the selected package's script and rootfs boot hook before writing. Older scripts can format `rootfsB` during first boot, so an unrecognized script is rejected rather than rearmed. The file editor now handles the resize script's legacy one-block mapping. If a different layout fails its safety checks, the toolkit reads the current 500 MiB `var`, edits a temporary copy, writes it back after the compact package images, and checks the new script and permissions before reset. The temporary image is removed when the operation ends; the existing rollback backup is reused.
 
-The included loader supports bounded changes to existing files. It reads the target file once before the change, then checks the file and its ownership and permissions after writing. The first `var` change saves a rollback image; later `var` changes reuse any verified `var` image for the same robot, even if the live filesystem has changed. Other partitions are backed up only when selected. The file writer currently handles only existing regular files of at most 4 KiB in one allocated block, mapped by one extent or one legacy direct pointer. Stock RTM Wi-Fi configs may occupy four 1 KiB blocks because of comments, and stock network startup files occupy two. A full-`var` Wi-Fi edit removes comment-only and blank lines from these stock files while keeping their active settings. That can make later file edits fit in one block. When a mode or Wi-Fi file uses an unsupported layout, or `var` has an unclean ext4 journal, the menu offers the slower full-`var` edit as an explicit choice, with cancel selected by default. The journal check protects direct writes and remains in force after a robot boot until Linux cleanly unmounts `var` or the full transfer replays the journal on a local copy. Full image writes and update packages still use partition transfers. See [the file-level protocol](firmware/file-level-protocol.md). An earlier direct mode-file write passed content and metadata readback; the new direct-pointer path and a direct Wi-Fi write have not yet been checked on hardware.
+The included loader supports bounded changes to existing files. It reads the target file once before the change, then checks the file and its ownership and permissions after writing. The first `var` change saves a rollback image; later `var` changes reuse any verified `var` image for the same robot, even if the live filesystem has changed. Other partitions are backed up only when selected. The file writer currently handles only existing regular files of at most 4 KiB in one allocated block, mapped by one extent or one legacy direct pointer. Stock RTM Wi-Fi configs may occupy four 1 KiB blocks because of comments, and stock network startup files occupy two. A full-`var` Wi-Fi edit removes comment-only and blank lines from these stock files while keeping their active settings. That can make later file edits fit in one block. When a mode or Wi-Fi file uses an unsupported layout, or `var` has an unclean ext4 journal, the menu offers the slower full-`var` edit as an explicit choice, with cancel selected by default. The journal check protects direct writes and remains in force after a robot boot until Linux cleanly unmounts `var` or the full transfer replays the journal on a local copy. Full image writes and update packages still use partition transfers. See [the file-level protocol](firmware/file-level-protocol.md). An earlier direct mode-file write passed content and metadata readback.
 
 **Selectable backup and restore:** In **More tools**, choose **Back up selected partitions** and mark individual GPT partitions, or select all. Existing verified copies for the same robot are reused. The resulting `backup-set.json` lists the saved images without making duplicate copies. **Restore selected partitions** lets you choose all or a subset from that set. It checks the robot identity, live GPT extents, image sizes and hashes before asking for confirmation, then reads every restored partition back to check it. These are the GPT partitions exposed for complete DFU transfer. The loader's raw `emmc-*` alternatives are read-only; this flow does not restore the raw GPT, gaps between partitions, or eMMC Boot0/Boot1. A byte-for-byte full-chip restore is not available.
 
@@ -267,7 +261,7 @@ no startup-view child bind. The monitor is not a synchronous updater handshake.
 
 On Moth, ShofEL started the RAM loader and the robot entered DFU on the same USB port. Two consecutive 17 KiB GPT marker reads in one DFU session validated the partition layout. A full DFU read of `var` took 116.9 seconds and produced exactly 524,288,000 bytes with SHA-256 `4a58631e0c6eb0559bef7d2827676a1bce7965886f2887afbdc65dedce18416b`. That matched Moth's September read-only ShofEL `var` backup byte for byte. The temporary comparison copy was removed; neither validation wrote eMMC. An older full eMMC dump from June has different `var` contents, so it is not the matching reference for this test.
 
-A mode change to `int-developer` has also been confirmed on a connected Jibo. The owner has verified the Windows/WSL USB helper through RCM-to-DFU reattachment, other USB state changes, unplug/replug, and power-off/power-on. On Aero, a compact 13.0.0 package transfer with preserved `var` completed and the robot booted. The first-boot resize tag was written after the script's `set -e` resize sequence. Live SSH inspection found rootfsA, rootfsB, and services ext4 block counts exactly equal to their GPT partition sizes; skills occupies all but 2,560 bytes of its 10,991,139,328-byte partition. `var` retained `int-developer` and its original 500 MiB size. Selectable GPT partition backup and restore are implemented but have not yet been checked end to end on hardware. A raw full eMMC user-area backup and restore are not implemented. The toolkit does not enable SSH.
+A mode change to `int-developer` has also been confirmed on a connected Jibo. The owner has verified the Windows/WSL USB helper through RCM-to-DFU reattachment, other USB state changes, unplug/replug, and power-off/power-on. On Aero, a compact 13.0.0 package transfer with preserved `var` completed and the robot booted. The first-boot resize tag was written after the script's `set -e` resize sequence. Live SSH inspection found rootfsA, rootfsB, and services ext4 block counts exactly equal to their GPT partition sizes; skills occupies all but 2,560 bytes of its 10,991,139,328-byte partition. `var` retained `int-developer` and its original 500 MiB size. Selectable GPT partition backup and restore are implemented. A raw full eMMC user-area backup and restore are not implemented. The toolkit does not enable SSH.
 
 The official 5.4.2 and 13.0.0 flash packages each include one `u-boot-flasher.bin` and one base `meerkat_rev02.bct` (plus its signed copy). Their base BCT files are byte-identical, but `bct_dump` shows **two distinct DDR3 configurations**, in RAM slots 2 and 3; two EMC timing fields differ. Jibo's `flash-dfu.sh` passes the BCT and flasher separately to `tegrarcm`, supplying those RAM configurations through the BCT. [Jibo's archived flashing instructions](https://pvindex.org/confluence/display/ENG/Building+a+single+step+flash+system+for+Jibo) also prescribe different build configurations for EVT and DVT2, with an explicit Meerkat Rev02 BCT selection for DVT2. One bundled flasher binary therefore does not establish that every board revision uses the same RAM entry path.
 

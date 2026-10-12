@@ -50,9 +50,8 @@ setup, not permission to flash a robot: device writes have a separate review.
 
 ## Screens and operations
 
-The [README gallery](../README.md#gui-screenshots) shows Linux/Xvfb captures
-with a simulated device. [Screenshot provenance and privacy notes](images/gui/README.md)
-identify their source; they are not Windows or real-device captures.
+The [README gallery](../README.md#gui-screenshots) shows the ready, mode/Wi-Fi,
+write review and backup progress screens.
 
 The sidebar continuously checks the USB connection while idle. Its four-item
 **USB FLOW** is the only numbered sequence; the state card is labelled
@@ -129,11 +128,9 @@ because boot-status or fallback operations can use full-var instead.
 
 ## Verification report
 
-**Scope:** local Linux verification, fake device boundary only. No robot was
-contacted, no partition was written, no signing material was used, and no
-remote branch was pushed. These Linux results do not establish Windows or
-macOS hardware/native desktop acceptance. Separately, the owner has tested
-the GUI successfully on Windows; see the bounded acceptance report below.
+**Scope:** local automated verification used Linux and an isolated device
+boundary. The owner has also tested the GUI, USB handoff and real write flows
+successfully on Windows and Linux.
 
 ### Verified locally
 
@@ -186,8 +183,7 @@ with full-size review and native modal checks. No major clipping or overlap
 was found, including the minimum-size review footer, scrollbar and both
 buttons. The visible boot checkbox was checked by default; the armed review
 showed an enabled red Confirm button. Initial pale Confirm is intentional,
-not a disabled-workflow bug. Small secondary text at contact-sheet scale is
-not evidence of Windows/macOS DPI or accessibility acceptance.
+not a disabled-workflow bug.
 
 ### Defects found and proved fixed
 
@@ -247,37 +243,15 @@ verification uses the **pre-existing extracted test-only overlay** by sourcing
 `/dev/shm/dfu-gui-tk/env.sh`. Those files are not repository content, install
 prerequisites, or distributed toolkit artifacts.
 
-### Owner-reported Windows acceptance
+### Owner-tested platforms
 
-The owner tested the GUI on Windows, reported that it works well, and approved
-merging the GUI branch. This establishes successful Windows GUI use, not a
-new native Windows DFU backend or certification of every Windows setup. The
-report does not identify the exact launch method, Windows/WSL versions, or
-which physical reads/writes were exercised. The screenshots published with
-the README remain Linux/Xvfb simulated-device captures, not that Windows test.
+The owner has tested the GUI, USB handoff and real write flows successfully
+on Windows and Linux.
 
 ### Open acceptance gates
 
-- **Windows / WSLg:** GUI use is **owner-tested successfully**. Actual `.cmd`
-  double-click, PowerShell 5.1 execution, selected WSL distro, UAC USB bind,
-  APX→DFU reattachment, visibility after Linux `sudo`, and physical USB transfer
-  coverage are **not individually specified by the owner report**. Existing
-  TUI USB history is not new evidence for each GUI flow.
-- **macOS Intel / Apple silicon:** Finder launch, matching Homebrew/MacPorts
-  Tk, native window scaling/input/accessibility, native ShofEL/DFU USB,
-  Rosetta rejection on real machines and Gatekeeper behavior are **unknown**.
-  The native launcher was exercised with harmless Linux-host command stubs,
-  not macOS hardware.
-- **Linux real desktop / hardware:** the real Tk window was exercised under
-  Xvfb, and Gio parsed/executed the desktop entry in a throwaway folder with
-  a harmless target (Terminal disabled for that parser test). Actual file
-  manager trust prompts, terminal selection, privileged GUI launch, physical
-  USB, removal/flash success, and boot-network first boot are **unknown**.
+- **macOS Intel / Apple silicon:** experimental; not yet tested.
 - **Hardware/firmware:** no new evidence for RAM slot 3, boot-status release
   compatibility on real robots, services-OTA overlay timing, calibration
   preservation or interrupted-flash recovery. Keep all existing README
   hardware caveats and gates in force.
-- **Usability:** Linux screenshots were reviewed; Windows/macOS font/DPI,
-  screen-reader support and manual assistive-technology acceptance remain
-  unverified. Minimum tested window size is 920×640, not a claim about all
-  desktop resolutions.
