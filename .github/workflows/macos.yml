@@ -51,7 +51,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_dfu_bounded.py -v
       - name: Test boot-screen delivery and bundled renderers
         run: |
-          brew install busybox coreutils node
+          # Homebrew has no BusyBox formula; the BusyBox ash hook tests skip here and run in Linux CI/locally.
+          brew install coreutils node
           ext4_prefix=$(brew --prefix e2fsprogs)
           coreutils_prefix=$(brew --prefix coreutils)
           export PATH="$ext4_prefix/sbin:$ext4_prefix/bin:$coreutils_prefix/libexec/gnubin:$PATH"
