@@ -1,0 +1,292 @@
+"""Headless safety tests: real TUI flows, fake device boundary, no Tk or USB."""
+import ast
+from dataclasses import asdict
+import io
+import json
+from pathlib import Path
+import threading
+from unittest.mock import patch
+
+import pytest
+import jibo_gui_core as core
+import jibo_tui
+from gui_fakes import FakeApi, FileLayoutError
+
+
+def controller(api=None, answers=(), runner=core.sync_runner):
+    prompts = []
+    remaining = iter(answers)
+    def ask(prompt):
+        prompts.append(prompt)
+        return next(remaining, None)
+    c = core.GuiController(api or FakeApi(), prompter=ask, runner=runner)
+    c.request_refresh()
+    return c, prompts
+
+
+def outcome(c):
+    return [event[1] for event in c.drain() if event[0] == "finished"][-1]
+
+
+@pytest.mark.parametrize("state", ["none", "multiple", "rcm", "dfu"])
+def test_readiness_and_actions_match_text_menu(state):
+    api = FakeApi(state)
+    c, _ = controller(api)
+    expected = jibo_tui.TerminalMenu(api)
+    assert asdict(c.snapshot().readiness) == asdict(expected.readiness)
+    assert tuple(asdict(i) for i in c.snapshot().items) == tuple(asdict(i) for i in expected.items)
+    assert c.snapshot().checked
+
+
+def test_private_flows_do_not_change_tui_prompt_functions():
+    original = tuple(getattr(jibo_tui, name) for name in core.PROMPT_PRIMITIVES)
+    c, _ = controller()
+    assert c.flows is not jibo_tui
+    assert tuple(getattr(jibo_tui, name) for name in core.PROMPT_PRIMITIVES) == original
+    tree = ast.parse(Path(jibo_tui.__file__).read_text())
+    curses_prompts = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)
+                      and any(isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                              and isinstance(call.func.value, ast.Name) and call.func.value.id == "curses"
+                              and call.func.attr == "wrapper" for call in ast.walk(node))}
+    assert curses_prompts == set(core.PROMPT_PRIMITIVES) | {"run"}
+
+
+@pytest.mark.parametrize("quick", [True, False])
+@pytest.mark.parametrize("approval", [None, "cancel", "CONFIRM", True, "confirm"])
+def test_mode_write_requires_explicit_confirm(quick, approval):
+    api = FakeApi(quick=quick)
+    c, prompts = controller(api, ("developer", approval))
+    assert c.start_action("set-mode")
+    result = outcome(c)
+    assert api.writes == (["set_mode_file_live" if quick else "set_mode_live"] if approval == "confirm" else [])
+    assert result.status == ("verified" if approval == "confirm" else "cancelled")
+    review = prompts[-1]
+    assert review.kind == "confirm" and review.initial == "cancel"
+    assert review.detail == jibo_tui._confirmation_details(
+        {"usb_port": "1-1", "changes": [{"partition": "var", "path": "/jibo/mode.json",
+          "description": "Fake file change", "before_size_bytes": 17, "candidate_size_bytes": 26}]}
+        if quick else api.plan,
+        "Review the file change before changing the robot mode." if quick else
+        "Review the var write plan before changing the robot mode.")
+
+
+@pytest.mark.parametrize("mode", ["developer", "int-developer"])
+@pytest.mark.parametrize("boot", ["install", "keep", "remove"])
+def test_combined_developer_boot_status_defaults_to_install(mode, boot):
+    api = FakeApi()
+    c, prompts = controller(api, (mode, "Test network", "open", boot, "confirm"))
+    c.start_action("set-mode-wifi")
+    assert outcome(c).status == "verified"
+    prompt = next(p for p in prompts if p.title == "Boot screen network status")
+    assert prompt.initial == "install"
+    assert "500 MiB" in prompt.detail and "SHA-256 readback" in prompt.detail
+    name, args, kwargs = api.calls[-1]
+    assert args == (mode, "Test network", None, True)
+    assert kwargs["port"] == "1-1"
+    assert name == ("set_mode_wifi_file_live" if boot == "keep" else "set_mode_wifi_live")
+    assert kwargs.get("network_status") == (None if boot == "keep" else boot)
+
+
+@pytest.mark.parametrize("mode", ["normal", "oobe"])
+def test_non_developer_has_no_boot_status_prompt(mode):
+    c, prompts = controller(answers=(mode, "Test network", "open", "confirm"))
+    c.start_action("set-mode-wifi")
+    assert outcome(c).status == "verified"
+    assert not any(p.title == "Boot screen network status" for p in prompts)
+
+
+@pytest.mark.parametrize("action,answers", [
+    ("configure-wifi", ("Test network", "protected", "testpass1", "different", "cancel")),
+    ("set-mode-wifi", ("developer", "Test network", "protected", "testpass1", "different", "cancel")),
+])
+def test_mismatched_password_cancel_never_calls_device_edit(action, answers):
+    api = FakeApi()
+    c, prompts = controller(api, answers)
+    c.start_action(action)
+    assert outcome(c).status == "cancelled"
+    assert not api.calls and not api.writes
+    assert len([p for p in prompts if p.password]) == 2
+    assert "testpass1" not in repr(prompts)
+
+
+def test_protected_wifi_requires_two_matching_entries_and_review():
+    api = FakeApi()
+    c, prompts = controller(api, ("Test network", "protected", "testpass1", "testpass1", "confirm"))
+    c.start_action("configure-wifi")
+    assert outcome(c).status == "verified"
+    assert len([p for p in prompts if p.password]) == 2
+    assert "testpass1" not in repr(prompts) + repr(api.calls) + repr(c.output_state())
+
+
+@pytest.mark.parametrize("status", [3, 4])
+def test_full_var_fallback_is_an_explicit_choice_then_separate_confirmation(status):
+    api = FakeApi()
+    def quick(*args, **kwargs):
+        raise FileLayoutError(status)
+    api.set_mode_file_live = quick
+    c, prompts = controller(api, ("developer", "cancel"))
+    c.start_action("set-mode")
+    assert outcome(c).status == "cancelled" and not api.writes and not api.calls
+    assert prompts[-1].initial == "cancel"
+    assert "500 MiB" in prompts[-1].detail
+    c, prompts = controller(api, ("developer", "full", "confirm"))
+    c.start_action("set-mode")
+    assert outcome(c).status == "verified"
+    assert api.writes == ["set_mode_live"]
+    assert prompts[-1].kind == "confirm" and prompts[-1].initial == "cancel"
+
+
+@pytest.mark.parametrize("policy", ["preserve", "fresh", "factory"])
+@pytest.mark.parametrize("approve", ["cancel", "confirm"])
+def test_flash_policies_keep_original_backend_confirmation(policy, approve):
+    api = FakeApi()
+    c, prompts = controller(api, ("0", policy, approve))
+    c.start_action("flash-update")
+    assert outcome(c).status == ("verified" if approve == "confirm" else "cancelled")
+    assert api.writes == (["flash_update"] if approve == "confirm" else [])
+    assert api.calls[-1][2]["preserve_var"] == (policy == "preserve")
+    assert api.calls[-1][2]["fresh_with_calibration"] == (policy == "factory")
+    assert "var only" in prompts[-1].detail
+    assert "rootfsA" in prompts[-1].detail and "skills" in prompts[-1].detail
+
+
+@pytest.mark.parametrize("approve", ["cancel", "confirm"])
+def test_remove_boot_status_uses_reviewed_full_var_operation(approve):
+    api = FakeApi()
+    c, prompts = controller(api, ("remove-boot-network-status", approve))
+    c.start_action("more-tools")
+    assert outcome(c).status == ("verified" if approve == "confirm" else "cancelled")
+    assert api.writes == (["boot_network_status_live"] if approve == "confirm" else [])
+    assert api.calls[-1][1] == ("remove",)
+    assert prompts[-1].title == "Confirm boot-screen status removal"
+    assert "Remove only the diagnostic var files and loopback hook." in prompts[-1].detail
+
+
+@pytest.mark.parametrize("approve", ["cancel", "confirm"])
+def test_restore_var_selection_and_confirmation(tmp_path, approve):
+    source = tmp_path / "backup-set.json"
+    source.write_text(json.dumps({"partitions": [{"name": "var", "size_bytes": 524288000},
+                                               {"name": "services", "size_bytes": 524288000}]}))
+    api = FakeApi()
+    c, prompts = controller(api, ("restore-partitions", str(source), ("var",), approve))
+    c.start_action("more-tools")
+    assert outcome(c).status == ("verified" if approve == "confirm" else "cancelled")
+    assert api.calls[-1][1] == (source, ("var",))
+    assert api.writes == (["restore_partitions"] if approve == "confirm" else [])
+    assert prompts[-1].initial == "cancel"
+    assert "var (524288000 bytes)" in prompts[-1].detail
+    assert "services" not in prompts[-1].detail
+
+
+def test_backup_and_more_tools_use_same_device_or_image_functions():
+    api = FakeApi()
+    c, _ = controller(api)
+    c.start_action("backup-var")
+    assert outcome(c).lines[0] == "Var backup is ready."
+    assert api.calls[-1] == ("backup_var", (), {"port": "1-1"})
+    for answers, name in [(("probe-dfu-gpt",), "probe_dfu_gpt"),
+                           (("backup-partitions", ("var",)), "backup_partitions"),
+                           (("inspect-backup", "/tmp/fake.img"), "inspect_var"),
+                           (("edit-backup", "mode", "/tmp/fake.img", "developer"), "edit_mode")]:
+        c, _ = controller(api, answers)
+        c.start_action("more-tools")
+        assert outcome(c).kind == "result"
+        assert api.calls[-1][0] == name
+
+
+@pytest.mark.parametrize("approve", [None, "confirm"])
+def test_write_var_passes_path_and_confirmation(approve):
+    api = FakeApi()
+    c, prompts = controller(api, ("write-var", "/tmp/edited.img", approve))
+    c.start_action("more-tools")
+    assert outcome(c).status == ("verified" if approve == "confirm" else "cancelled")
+    assert api.calls[-1][1] == ("/tmp/edited.img",)
+    assert prompts[-1].title == "Confirm var write"
+
+
+def test_rcm_entry_requires_review_and_refreshes_to_dfu():
+    api = FakeApi("rcm")
+    c, prompts = controller(api, ("confirm",))
+    c.start_action("enter-dfu-shofel")
+    assert outcome(c).kind == "note"
+    assert c.snapshot().readiness.state == "dfu-ready"
+    assert "Slot 3 has not been tested" in prompts[0].detail
+    assert "No partition write" in prompts[0].detail
+
+
+def test_disconnected_between_home_and_dispatch_never_starts_action():
+    api = FakeApi()
+    c, _ = controller(api)
+    api.state = "none"
+    c.start_action("set-mode")
+    assert outcome(c).kind == "note"
+    assert not api.calls and not api.writes
+
+
+def test_duplicate_start_and_refresh_refused_until_action_finishes():
+    jobs = []
+    c, _ = controller(runner=lambda target, kind: jobs.append((target, kind)))
+    jobs.pop(0)[0]()
+    assert c.start_action("backup-var")
+    assert not c.start_action("backup-var")
+    assert not c.request_refresh()
+    assert c.busy and all(not i.enabled for i in c.snapshot().items)
+    jobs.pop(0)[0]()
+    assert not c.busy and len(c.api.calls) == 1
+
+
+def test_shutdown_releases_pending_prompt_without_writing():
+    c = core.GuiController(FakeApi())
+    # Do the initial probe synchronously, then use a real action thread.
+    c._runner = core.sync_runner
+    c.request_refresh()
+    jobs = []
+    c._runner = lambda target, kind: jobs.append(target)
+    assert c.start_action("set-mode")
+    worker = threading.Thread(target=jobs.pop())
+    worker.start()
+    event = c._events.get(timeout=2)
+    while event[0] != "prompt":
+        event = c._events.get(timeout=2)
+    c.shutdown()
+    worker.join(timeout=2)
+    assert not worker.is_alive() and not c.api.writes
+    assert not c.start_action("backup-var")
+
+
+def test_output_router_captures_carriage_progress_and_restores_streams():
+    c, _ = controller()
+    c._busy = True
+    original = core.sys.stdout, core.sys.stderr
+    with core.capture_output(c):
+        assert core.sys.stderr.isatty()
+        core.sys.stderr.write("Reading var\n\r[##########----------] 50.0% | 250/500 MiB")
+    assert (core.sys.stdout, core.sys.stderr) == original
+    state = c.output_state()
+    assert state.percent == 50 and state.step == "Reading var"
+    assert "250/500 MiB" in state.status
+
+
+def test_unavailable_gui_explains_tk_and_wslg_and_text_menu():
+    assert "python3-tk" in core.unavailable_message("tkinter", platform="linux")
+    assert "python-tk@3.12" in core.unavailable_message("tkinter", platform="darwin", version=(3, 12))
+    text = core.unavailable_message("display", platform="linux", environ={"WSL_DISTRO_NAME": "Ubuntu"})
+    assert "WSLg" in text and "wsl --update" in text and "without --gui" in text
+
+
+def test_missing_tk_fallback_only_runs_with_terminal():
+    stream = io.StringIO()
+    with patch.object(core, "_terminal_available", return_value=False):
+        assert core._fall_back("Tk unavailable", lambda: pytest.fail("not a terminal"), stream) == 2
+    with patch.object(core, "_terminal_available", return_value=True):
+        assert core._fall_back("Tk unavailable", lambda: 17, stream) == 17
+
+
+def test_failed_device_action_is_not_reported_as_success():
+    api = FakeApi()
+    api.fail = RuntimeError("Fake readback mismatch: leave robot in DFU")
+    c, _ = controller(api, ("developer", "confirm"))
+    c.start_action("set-mode")
+    result = outcome(c)
+    assert result.kind == "error" and "readback mismatch" in result.lines[0]
+    assert not c.busy

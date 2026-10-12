@@ -156,7 +156,7 @@ def _wrapping(label, minimum=120, margin=0):
     """Rewrap a label to its current width (keeps paragraphs readable on resize)."""
     def update(event):
         width = max(minimum, event.width - margin)
-        if int(label.cget("wraplength") or 0) != width:
+        if int(str(label.cget("wraplength") or 0)) != width:
             label.configure(wraplength=width)
     label.bind("<Configure>", update, add="+")
     return label
@@ -448,6 +448,7 @@ class ToolkitWindow:
         self.action_rows = {}
         self._rendered_items = None
         self._scroll_areas = []
+        self._confirm_job = None
         root.title("Jibo DFU Mod Toolkit")
         root.configure(bg=P["bg"])
         root.geometry("1080x720")
@@ -605,6 +606,9 @@ class ToolkitWindow:
         return page
 
     def _show(self, name, frame):
+        if self._confirm_job is not None:
+            self.root.after_cancel(self._confirm_job)
+            self._confirm_job = None
         for persistent in (self.home, self.progress):
             if persistent is not frame:
                 persistent.pack_forget()
@@ -734,6 +738,9 @@ class ToolkitWindow:
         return self.controller.snapshot().active_label
 
     def _build_select(self, page, prompt):
+        if (prompt.title == "Boot screen network status" and
+                tuple(item.key for item in prompt.items) == ("install", "keep", "remove")):
+            return self._build_boot_status(page, prompt)
         self._header(page, prompt.title, prompt.detail, self._kicker())
         if prompt.prompt:
             question = tk.Label(page, text=prompt.prompt, font=self.theme.bold, bg=P["bg"],
@@ -787,6 +794,34 @@ class ToolkitWindow:
         self.controls = {"options": rows, "primary": go, "cancel": cancel,
                          "selected": lambda: current["key"], "choose": choose}
 
+    def _build_boot_status(self, page, prompt):
+        """Present the shared install/keep/remove choices as an ON-by-default checkbox."""
+        self._header(page, prompt.title, prompt.detail, self._kicker())
+        if prompt.prompt:
+            self._callout(page, prompt.prompt).pack(fill="x", pady=(18, 0))
+        labels = {item.key: item.label for item in prompt.items}
+        enabled = tk.BooleanVar(page, value=prompt.initial == "install")
+        checkbox = ttk.Checkbutton(page, text=labels["install"], variable=enabled)
+        checkbox.pack(anchor="w", pady=(24, 10))
+        note = tk.Label(page, text="Unchecked: " + labels["keep"] + ".\n"
+                        "Unchecking does not remove an existing diagnostic.",
+                        font=self.theme.small, bg=P["bg"], fg=P["muted"],
+                        justify="left", anchor="w")
+        note.pack(fill="x")
+        _wrapping(note)
+        remove = ttk.Button(page, text=labels["remove"],
+                            command=lambda: self.answer("remove"))
+        remove.pack(anchor="w", pady=(24, 0))
+        buttons = self._button_bar(page)
+        go = ttk.Button(buttons, text="Continue", style="Accent.TButton",
+                        command=lambda: self.answer("install" if enabled.get() else "keep"))
+        go.pack(side="right")
+        cancel = ttk.Button(buttons, text=prompt.cancel_label, command=lambda: self.answer(None))
+        cancel.pack(side="right", padx=(0, 10))
+        checkbox.focus_set()
+        self.controls = {"boot_enabled": enabled, "checkbox": checkbox, "remove": remove,
+                         "primary": go, "cancel": cancel}
+
     def _build_confirm(self, page, prompt):
         writes = prompt.title.lower().startswith("confirm")
         self._header(page, prompt.title, kicker=self._kicker())
@@ -810,7 +845,7 @@ class ToolkitWindow:
         hint.pack(side="left")
         # A double-click carried over from the previous page must not confirm.
         confirm.state(["disabled"])
-        self.root.after(_CONFIRM_ARM_MS, lambda: confirm.winfo_exists() and
+        self._confirm_job = self.root.after(_CONFIRM_ARM_MS, lambda: confirm.winfo_exists() and
                         self.prompt is prompt and confirm.state(["!disabled"]))
         for widget in (cancel, confirm):
             widget.bind("<Return>", lambda event: event.widget.invoke() or "break")
@@ -867,6 +902,29 @@ class ToolkitWindow:
         cancel.pack(side="right", padx=(0, 10))
         update()
         page.focus_set()
+        focused = {"index": 0}
+        keys = [item.key for item in prompt.items if item.enabled]
+
+        def move(step):
+            if keys:
+                focused["index"] = (focused["index"] + step) % len(keys)
+                row = rows[keys[focused["index"]]]
+                area.show(row)
+                for key, option in rows.items():
+                    option.configure(highlightbackground=P["text"] if key == keys[focused["index"]]
+                                     else P["accent"] if key in chosen else P["border"])
+            return "break"
+
+        def keyboard_toggle():
+            if keys:
+                toggle(keys[focused["index"]])
+            return "break"
+
+        page.bind("<Up>", lambda _event: move(-1))
+        page.bind("<Down>", lambda _event: move(1))
+        page.bind("<space>", lambda _event: keyboard_toggle())
+        page.bind("<a>", lambda _event: everything(True))
+        page.bind("<n>", lambda _event: everything(False))
         page.bind("<Return>", lambda _event: submit())
         self.controls = {"options": rows, "primary": go, "cancel": cancel,
                          "toggle": toggle, "all": everything, "chosen": chosen}
@@ -1084,7 +1142,8 @@ class ToolkitWindow:
                 return
         self.closed = True
         self.controller.shutdown()
-        for job in (getattr(self, "_poll_job", None), getattr(self, "_refresh_job", None)):
+        for job in (self._confirm_job, getattr(self, "_poll_job", None),
+                    getattr(self, "_refresh_job", None)):
             if job is not None:
                 try:
                     self.root.after_cancel(job)
