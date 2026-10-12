@@ -684,7 +684,7 @@ class ToolkitWindow:
     def render_state(self):
         snap = self.controller.snapshot()
         self.stepper.render(snap.step_index, snap.warning, snap.checked)
-        self.status_step.configure(text=snap.step_label.upper())
+        self.status_step.configure(text="USB READINESS")
         self.status_title.configure(text=snap.headline)
         self.status_detail.configure(text=snap.detail)
         self.status_port.configure(text=("USB port " + snap.port) if snap.port else "")

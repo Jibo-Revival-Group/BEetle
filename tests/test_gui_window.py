@@ -27,6 +27,31 @@ def window():
     assert not errors, errors
 
 
+@pytest.mark.parametrize("state", ["none", "multiple", "rcm", "dfu"])
+def test_sidebar_readiness_label_does_not_number_four_step_flow(window, state):
+    w = window
+    w.controller.api.state = state
+    assert w.controller.request_refresh()
+    w.render_state()
+    w.root.update()
+    snap = w.controller.snapshot()
+    assert w.stepper.steps == ("Connect", "RCM/APX", "DFU", "Choose an action")
+    assert w.status_step.cget("text") == "USB READINESS"
+    assert w.status_title.cget("text") == snap.headline
+    assert w.status_detail.cget("text") == snap.detail
+    if state == "dfu":
+        assert snap.step_index == 3
+        assert w.controller.flows.status_lines(snap.readiness)[0] == (
+            "STEP 3 / 3   DFU active; Jibo recovery loader ready")
+        p = core.Prompt("confirm", "Confirm var write", detail="Exact review\nUSB port: 1-1")
+        w.show_prompt(p)
+        w.root.update()
+        assert w.status_step.cget("text") == "USB READINESS"
+        assert w.controls["review"].get() == p.detail
+        w.controls["cancel"].invoke()
+        assert p.wait() is None
+
+
 def boot_prompt(w):
     return core.Prompt("select", "Boot screen network status", initial="install",
                        detail="Install/remove uses one full 500 MiB var transaction with mode and Wi-Fi, rollback backup and SHA-256 readback. No services partition is rewritten. Unknown SSM hashes safely keep the stock screen.",

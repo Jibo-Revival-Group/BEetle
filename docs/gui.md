@@ -49,11 +49,13 @@ setup, not permission to flash a robot: device writes have a separate review.
 
 ## Screens and operations
 
-The sidebar continuously checks the USB connection while idle. RCM/APX and
-DFU are distinct; partition operations require the toolkit loader marker and
-`var` alternate. Multiple robots, missing/incomplete loader, access errors and
-failed enumeration disable unsafe actions. A failed check does not keep
-previously ready actions enabled. **Refresh USB**, F5 or Ctrl+R retries.
+The sidebar continuously checks the USB connection while idle. Its four-item
+**USB FLOW** is the only numbered sequence; the state card is labelled
+**USB READINESS** rather than repeating the TUI's separate three-step count.
+RCM/APX and DFU are distinct; partition operations require the toolkit loader
+marker and `var` alternate. Multiple robots, missing/incomplete loader, access
+errors and failed enumeration disable unsafe actions. A failed check does not
+keep previously ready actions enabled. **Refresh USB**, F5 or Ctrl+R retries.
 
 Available operations use `jibo_tui.execute_action()` and the original
 `jibo_dfu` / `jibo_images` implementations:
