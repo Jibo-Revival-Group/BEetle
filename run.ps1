@@ -3,7 +3,8 @@ param(
     [switch]$ManualUsb,
     [string]$Distro,
     [switch]$UsbOnly,
-    [switch]$MonitorUsb
+    [switch]$MonitorUsb,
+    [switch]$Gui
 )
 
 $ErrorActionPreference = 'Stop'
@@ -435,7 +436,9 @@ try {
     try {
         # Invoke WSL directly so PowerShell passes the distro and Linux path as
         # separate arguments, including when either contains spaces.
-        & $script:WslPath --distribution $script:SelectedDistro --cd $linuxRepo --exec env JIBO_MANUAL_USB=1 bash ./run.sh
+        $toolkitArguments = @()
+        if ($Gui) { $toolkitArguments += '--gui' }
+        & $script:WslPath --distribution $script:SelectedDistro --cd $linuxRepo --exec env JIBO_MANUAL_USB=1 bash ./run.sh @toolkitArguments
         $wslExitCode = $LASTEXITCODE
     }
     finally {

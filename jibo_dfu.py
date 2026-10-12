@@ -3073,6 +3073,8 @@ def _launch_gui():
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "--gui":
+        argv[0] = "gui"
     if not argv:
         return _launch_menu()
     parser = argparse.ArgumentParser(description=__doc__ + " Run without arguments to open the menu.")

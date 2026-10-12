@@ -73,7 +73,7 @@ class PackageTests(unittest.TestCase):
         expected = {
             "__main__.py", "loader.bin", "entry-patch.sha256", "README.md", "jibo_dfu.py",
             "jibo_dfu_bounded.py", "jibo_dfu_pipeline.py", "jibo_images.py",
-            "jibo_updates.py", "jibo_tui.py",
+            "jibo_updates.py", "jibo_tui.py", "jibo_gui.py", "jibo_gui_core.py",
             "tools/shofel2_t124", "tools/intermezzo.bin", "tools/dfu_stage2.bin",
             "tools/dfu-util",
             "assets/boot-network-status/startup-view.js",

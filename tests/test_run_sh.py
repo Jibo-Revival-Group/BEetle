@@ -191,7 +191,7 @@ case "$name" in
     fi
     while [ "$#" -gt 0 ]; do
       case "$1" in
-        -n|-E|--preserve-env) shift ;;
+        -n|-E|--preserve-env|--preserve-env=*) shift ;;
         *) break ;;
       esac
     done

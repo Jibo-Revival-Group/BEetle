@@ -3,6 +3,8 @@
 set -euo pipefail
 
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# GUI is opt-in. No arguments must keep opening the existing text menu.
+if [[ ${1:-} == --gui ]]; then shift; set -- gui "$@"; fi
 if [[ $(uname -s) == Darwin ]]; then
   exec /bin/bash "$repo_dir/run-macos.sh" "$@"
 fi
@@ -74,12 +76,38 @@ start_wsl_usb_handoff() {
   usb_monitor_pid=$!
 }
 
+ensure_tk() {
+  python3 -c 'import tkinter' >/dev/null 2>&1 && return 0
+  local tk_package=
+  if has apt-get; then
+    tk_package=python3-tk
+    say "Installing GUI support: $tk_package"
+    as_root apt-get update && as_root apt-get install -y "$tk_package" || true
+  elif has dnf; then
+    tk_package=python3-tkinter
+    say "Installing GUI support: $tk_package"
+    as_root dnf install -y "$tk_package" || true
+  elif has pacman; then
+    say 'Installing GUI support: tk'
+    as_root pacman -S --needed --noconfirm tk || true
+  fi
+  # The Python GUI entry reports fixes and offers the text menu if this still fails.
+  python3 -c 'import tkinter' >/dev/null 2>&1 ||
+    say 'Tk is unavailable; the toolkit will explain how to install it and offer the text menu.'
+}
+
 launch() {
   command -v python3 >/dev/null 2>&1 || die 'Python 3 is required to run the package.'
   need_sudo
+  if [[ ${1:-} == gui ]]; then ensure_tk; fi
   start_wsl_usb_handoff
   say 'Opening the toolkit.'
-  as_root python3 "$package" "$@"
+  if [[ ${1:-} == gui ]] && (( EUID != 0 )); then
+    # WSLg/X11 needs the invoking desktop connection, not the entire environment.
+    sudo --preserve-env=DISPLAY,XAUTHORITY,WAYLAND_DISPLAY,XDG_RUNTIME_DIR python3 "$package" "$@"
+  else
+    as_root python3 "$package" "$@"
+  fi
 }
 
 if [[ -f $package && -f $repo_dir/scripts/check_package.py ]] && has python3; then

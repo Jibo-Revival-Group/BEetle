@@ -123,6 +123,8 @@ def main():
         "jibo_images.py": ROOT / "jibo_images.py",
         "jibo_updates.py": ROOT / "jibo_updates.py",
         "jibo_tui.py": ROOT / "jibo_tui.py",
+        "jibo_gui.py": ROOT / "jibo_gui.py",
+        "jibo_gui_core.py": ROOT / "jibo_gui_core.py",
         "README.md": ROOT / "README.md",
     }
     for name, path in sources.items():

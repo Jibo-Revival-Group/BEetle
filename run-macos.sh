@@ -95,5 +95,10 @@ if [[ -z ${JIBO_SHOFEL2:-} ]]; then
   export JIBO_SHOFEL2=$entry_dir/shofel2_t124
 fi
 
+if [[ ${1:-} == gui ]] && ! "$python" -c 'import tkinter' >/dev/null 2>&1; then
+  tk_version=$("$python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+  say "GUI support is missing. For Homebrew: brew install python-tk@$tk_version. For MacPorts install the matching pyXY-tkinter port. The app will offer the text menu."
+fi
+
 say 'Experimental macOS workflow: RCM-to-DFU entry is available and unverified on Mac hardware. Partition actions need the Jibo DFU loader it starts.'
 exec "$python" "$repo_dir/jibo_dfu.py" "$@"
