@@ -1,6 +1,7 @@
 # Graphical Jibo DFU Toolkit
 
-The Tkinter/ttk window is an **opt-in view of the existing guided toolkit**.
+The Tkinter/ttk window is the **recommended entry point** in the README and
+a view of the existing guided toolkit. The launch behavior is unchanged:
 `run.sh` and `run.ps1` without a GUI flag still open the original text menu.
 No drawing or image of Jibo is used. The GUI does not add another flashing
 implementation or bypass the backend's validation, backups or confirmations.
@@ -48,6 +49,10 @@ setup, not permission to flash a robot: device writes have a separate review.
   not bundled native libraries in the archive.
 
 ## Screens and operations
+
+The [README gallery](../README.md#gui-screenshots) shows Linux/Xvfb captures
+with a simulated device. [Screenshot provenance and privacy notes](images/gui/README.md)
+identify their source; they are not Windows or real-device captures.
 
 The sidebar continuously checks the USB connection while idle. Its four-item
 **USB FLOW** is the only numbered sequence; the state card is labelled
@@ -126,8 +131,9 @@ because boot-status or fallback operations can use full-var instead.
 
 **Scope:** local Linux verification, fake device boundary only. No robot was
 contacted, no partition was written, no signing material was used, and no
-remote branch was pushed. Windows and macOS results below are not hardware
-or native desktop acceptance.
+remote branch was pushed. These Linux results do not establish Windows or
+macOS hardware/native desktop acceptance. Separately, the owner has tested
+the GUI successfully on Windows; see the bounded acceptance report below.
 
 ### Verified locally
 
@@ -241,12 +247,22 @@ verification uses the **pre-existing extracted test-only overlay** by sourcing
 `/dev/shm/dfu-gui-tk/env.sh`. Those files are not repository content, install
 prerequisites, or distributed toolkit artifacts.
 
+### Owner-reported Windows acceptance
+
+The owner tested the GUI on Windows, reported that it works well, and approved
+merging the GUI branch. This establishes successful Windows GUI use, not a
+new native Windows DFU backend or certification of every Windows setup. The
+report does not identify the exact launch method, Windows/WSL versions, or
+which physical reads/writes were exercised. The screenshots published with
+the README remain Linux/Xvfb simulated-device captures, not that Windows test.
+
 ### Open acceptance gates
 
-- **Windows / WSLg:** actual `.cmd` double-click, PowerShell 5.1 execution,
-  selected WSL distro, UAC USB bind, APX→DFU reattachment, window visibility
-  after Linux `sudo`, and actual USB transfers are **unknown for this GUI**.
-  Existing TUI USB history is not new GUI evidence.
+- **Windows / WSLg:** GUI use is **owner-tested successfully**. Actual `.cmd`
+  double-click, PowerShell 5.1 execution, selected WSL distro, UAC USB bind,
+  APX→DFU reattachment, visibility after Linux `sudo`, and physical USB transfer
+  coverage are **not individually specified by the owner report**. Existing
+  TUI USB history is not new evidence for each GUI flow.
 - **macOS Intel / Apple silicon:** Finder launch, matching Homebrew/MacPorts
   Tk, native window scaling/input/accessibility, native ShofEL/DFU USB,
   Rosetta rejection on real machines and Gatekeeper behavior are **unknown**.

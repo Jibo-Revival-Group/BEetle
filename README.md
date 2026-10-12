@@ -1,35 +1,66 @@
 # Jibo DFU Mod Toolkit
 
-A guided terminal tool with an optional graphical window for Jibo recovery, backups, mode and Wi-Fi settings, and official update packages. It runs on Linux, WSL, and macOS with the same guided menu and RCM-to-DFU entry on each. The workflow has two USB states:
+A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg** or **Linux**; a native **macOS** launcher is also provided, but Mac GUI and robot USB behavior remain untested. The original terminal menu and scripting commands are still available.
 
-1. Put the robot in **RCM/APX** (`0955:7740`). The toolkit uses ShofEL to load its recovery program into RAM.
+## Start the GUI
+
+Clone or download this repository, extract it if needed, and keep the launchers in the toolkit folder. Complete the linked platform setup before launching:
+
+| Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
+| --- | --- | --- | --- |
+| **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
+| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); **experimental, untested on Macs** |
+| **Linux x86_64** | `Jibo DFU Toolkit.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
+
+The Windows GUI has been tested successfully by the owner. It displays the Linux Tk window through WSLg, **not a native Windows DFU driver**. That report does not specify every USB handoff or physical write flow; [remaining acceptance gates](docs/gui.md#open-acceptance-gates) stay explicit. Linux window verification used Xvfb with a simulated device, not a physical robot. macOS GUI launch, native USB transfers and Finder/Gatekeeper behavior are still unverified.
+
+Linux file managers may require **Allow Launching** or **Trust** for the `.desktop` file. On macOS, Finder may require **Open** for the `.command` file; it is not a signed/notarized app. First launch may need internet access to build the host tools and may open a terminal for setup or authorization. **Host setup authorization is not consent to write a robot**: each device change has its own review.
+
+### GUI screenshots
+
+These are **Linux/Xvfb screenshots with a simulated device**. They are not Windows captures or evidence of real robot reads, writes or transfer speeds. Visible backup paths, hashes and progress are synthetic test data; no Wi-Fi credentials are shown.
+
+![Linux/Xvfb simulated-device GUI: DFU-ready action screen](docs/images/gui/ready.png)
+
+*DFU-ready action screen — Linux/Xvfb, simulated device. USB readiness and available operations are shown together.*
+
+<details>
+<summary>Mode/Wi-Fi setup, safety review and progress screenshots</summary>
+
+![Linux/Xvfb simulated-device GUI: mode selection before Wi-Fi setup](docs/images/gui/mode-wifi.png)
+
+*Mode/Wi-Fi setup — Linux/Xvfb, simulated device. Select the mode before entering the network settings; nothing is written at this step.*
+
+![Linux/Xvfb simulated-device GUI: explicit mode and Wi-Fi write review](docs/images/gui/review.png)
+
+*Write review — Linux/Xvfb, simulated device. The plan shows the target, hashes and rollback backup; Cancel is the default and Confirm requires explicit approval.*
+
+![Linux/Xvfb simulated-device GUI: var backup progress](docs/images/gui/progress.png)
+
+*Backup progress — Linux/Xvfb, simulated device. The stage, percentage and operation log are examples, not measured hardware performance.*
+
+</details>
+
+See [screenshot provenance and privacy notes](docs/images/gui/README.md).
+
+### USB workflow and safety
+
+1. Put one robot in **RCM/APX** (`0955:7740`). The toolkit uses ShofEL to load its recovery program into RAM.
 2. The robot reappears in **DFU** (`0955:701a`). All partition reads and writes use DFU. ShofEL is used only for the RCM-to-DFU entry step.
 
-The guided menu enables DFU entry when the robot is in RCM and partition actions after it appears in DFU. The launchers below open that menu. On Linux, the `.pyz` package is generated locally and reused on later runs; on macOS, the launcher runs the Python source directly.
+The GUI enables DFU entry in RCM and partition actions only after the recovery loader is ready in DFU. It shares the terminal menu's device operations, validation, backups and exact reviewed confirmations, including the ON-by-default boot-network checkbox for developer mode + Wi-Fi setup. It shows USB state and progress, refuses duplicate starts, and does not allow window closure during a transfer. **Keep USB connected and wait for completion**; forcibly killing the app can still interrupt a transfer. Read the [hardware limitations](#hardware-results-and-remaining-work) and [boot-screen diagnostic caveats](#boot-screen-wi-fiip-diagnostic-usb-only-setup) before proceeding.
 
-## Graphical window (optional)
+On Linux, the `.pyz` package is generated locally and reused on later runs; on macOS, the launcher runs the Python source directly. See [GUI setup, safety and verification](docs/gui.md) for details.
 
-Use `./run.sh --gui` on Linux/macOS, or `.\run.ps1 -Gui` on Windows with
-WSL 2 + WSLg. For double-click launch, keep these files in the toolkit folder:
+### Terminal menu (alternate)
 
-- **Windows:** `run-gui.cmd` (same WSL/usbipd helper as the text menu).
-- **macOS:** `Jibo DFU Toolkit.command` (requires matching Python/Tk support).
-- **Linux:** `Jibo DFU Toolkit.desktop` (your file manager may require Allow Launching).
-
-The Tkinter/ttk GUI offers the same device operations and exact reviewed
-confirmation flows as the text menu, including the ON-by-default boot-network
-checkbox for developer mode + Wi-Fi setup. It shows USB state and progress,
-refuses duplicate starts, and does not allow window closure during a transfer.
-Running the original launchers **without a GUI flag still opens the TUI**.
-See [GUI setup, safety, verification and open platform gates](docs/gui.md).
-Linux Xvfb/fake-device verification does not establish Windows/macOS or robot
-hardware acceptance.
+For the original TUI, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. **The original launchers without a GUI flag still open the TUI**; making the GUI the recommended README path does not change their defaults. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
 
 ## Quick path: stock Jibo to int-developer
 
 If you are here to mod a stock robot, use the guided menu to change its existing installation to `int-developer` mode. **If the robot has not joined your Wi-Fi yet, configure Wi-Fi in the toolkit too:** changing the mode alone does not give it a network connection.
 
-1. Start the toolkit with `./run.sh` on Linux or macOS, or `.\run.ps1` from PowerShell on a Windows PC with WSL 2. Connect one robot by USB and put it in RCM/APX mode.
+1. Start the GUI with `./run.sh --gui` on Linux or macOS, or `.\run.ps1 -Gui -Distro Ubuntu-22.04` from PowerShell on a Windows PC with WSL 2 + WSLg. The double-click entries above open the same window. Connect one robot by USB and put it in RCM/APX mode.
 2. Choose **Enter DFU with ShofEL (RAM loader)**. Wait for the menu to show the robot in DFU. The included Meerkat Rev02 entry selects RAM slot 2 or 3 from the hardware strap; slot 3 has only offline checks so far. See [hardware coverage](#hardware-results-and-remaining-work) for other revisions.
 3. If the robot already has your Wi-Fi saved, choose **Set robot mode** and select **int-developer**. If it has never connected to your Wi-Fi, choose **Set mode and configure Wi-Fi**, select **int-developer**, then enter your Wi-Fi name and password twice. That action applies both settings together. If a saved Wi-Fi password is wrong, choose **Add or update a Wi-Fi network** and enter the same SSID with the corrected password.
 4. Review and confirm the change. The toolkit saves or reuses a `var` rollback backup and checks the result. After a fresh RTM flash, the stock Wi-Fi and network startup files can be too large for the quick editor; if the menu offers a full `var` transfer, choose it and leave the robot connected until readback finishes. Setting Wi-Fi also prepares startup to skip the retired Jibo server check that can disconnect an otherwise working network. On RTM2, it applies the later TI radio settings too. These changes take effect when the robot restarts; flashing alone does not make them.
@@ -42,14 +73,14 @@ On an x86_64 Linux system (including WSL 2), clone the repository and run the la
 ```sh
 git clone https://github.com/Paskooter/Jibo-DFU-Mod-Toolkit.git
 cd Jibo-DFU-Mod-Toolkit
-./run.sh
+./run.sh --gui
 ```
 
-The launcher checks the local `dist/jibo-dfu-linux-x86_64.pyz` before opening it. If it is missing, stale, or contains a ShofEL helper that cannot start DFU, the launcher asks for `sudo` authorization in the same terminal, installs missing build packages on supported distributions, builds the launch-enabled ShofEL helper, replaces the `.pyz`, and opens the menu. You do not need to install ShofEL separately. You can also start it with `sudo ./run.sh`. USB access requires administrator privileges. Backups are saved under the invoking owner's `~/Jibo-Backups`.
+The launcher checks the local `dist/jibo-dfu-linux-x86_64.pyz` before opening it. If it is missing, stale, or contains a ShofEL helper that cannot start DFU, the launcher asks for `sudo` authorization in the same terminal, installs missing build packages on supported distributions, builds the launch-enabled ShofEL helper, replaces the `.pyz`, and opens the GUI. It also installs the system Tk dependency on supported distributions; a working graphical display is required. You do not need to install ShofEL separately. Prefer `./run.sh --gui` so the launcher requests authorization and preserves the required desktop connection variables. USB access requires administrator privileges. Backups are saved under the invoking owner's `~/Jibo-Backups`.
 
-When `./run.sh` is started inside WSL, it also tries to use Windows PowerShell and usbipd-win to attach a connected Jibo and reattach it when it changes from APX to DFU. If Windows interop or usbipd-win is unavailable, attach it manually. Use `JIBO_MANUAL_USB=1 ./run.sh` to skip automatic USB handoff.
+When `./run.sh` is started inside WSL, it also tries to use Windows PowerShell and usbipd-win to attach a connected Jibo and reattach it when it changes from APX to DFU. If Windows interop or usbipd-win is unavailable, attach it manually. Use `JIBO_MANUAL_USB=1 ./run.sh --gui` to skip automatic USB handoff.
 
-The first build needs an internet connection for ShofEL and package installation. The launcher's default loader is the included `assets/loader.bin`; `JIBO_LOADER=/path/to/loader.bin ./run.sh` selects a different local copy of the same pinned image. The U-Boot source and notices are in `vendor/jibo-ram-dfu-v1-source.tar.gz`; the file access changes are in `firmware/file-level.patch` and `firmware/cid-serial.patch`, and the faster transfer changes are in `firmware/dfu-queue.patch`. An existing package can be run directly with `sudo python3 dist/jibo-dfu-linux-x86_64.pyz`.
+The first build needs an internet connection for ShofEL and package installation. The launcher's default loader is the included `assets/loader.bin`; `JIBO_LOADER=/path/to/loader.bin ./run.sh --gui` selects a different local copy of the same pinned image. The U-Boot source and notices are in `vendor/jibo-ram-dfu-v1-source.tar.gz`; the file access changes are in `firmware/file-level.patch` and `firmware/cid-serial.patch`, and the faster transfer changes are in `firmware/dfu-queue.patch`. An existing package can be run directly with `sudo python3 dist/jibo-dfu-linux-x86_64.pyz`.
 
 ## Windows with WSL
 
@@ -78,29 +109,31 @@ If `winget` is unavailable, install the `.msi` from the [usbipd-win releases](ht
 Open PowerShell in the downloaded or cloned toolkit folder and run:
 
 ```powershell
-.\run.ps1 -Distro Ubuntu-22.04
+.\run.ps1 -Gui -Distro Ubuntu-22.04
 ```
 
-The launcher selects that WSL 2 distribution, shares and attaches a connected Jibo USB device, then runs `run.sh` inside WSL. The robot can change from APX (`0955:7740`) to DFU (`0955:701a`); the launcher watches both USB identities while the menu is open. Sharing a new USB identity may show a Windows administrator prompt. Run `.\run.ps1 -Distro Ubuntu-22.04 -ManualUsb` if you prefer to attach from another PowerShell window with `usbipd bind --busid <BUSID>` (administrator) and `usbipd attach --wsl --busid <BUSID>`. The Linux `./run.sh` also works directly inside WSL with manual USB attachment. If PowerShell's script policy blocks the launcher, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Distro Ubuntu-22.04` for that invocation.
+The launcher selects that WSL 2 distribution, shares and attaches a connected Jibo USB device, then runs `run.sh --gui` inside WSL. WSLg must be available to display the window; if it is missing, run `wsl --update` and `wsl --shutdown`, then reopen the launcher. The robot can change from APX (`0955:7740`) to DFU (`0955:701a`); the launcher watches both USB identities while the menu is open. Sharing a new USB identity may show a Windows administrator prompt. Run `.\run.ps1 -Gui -Distro Ubuntu-22.04 -ManualUsb` if you prefer to attach from another PowerShell window with `usbipd bind --busid <BUSID>` (administrator) and `usbipd attach --wsl --busid <BUSID>`. The Linux `./run.sh --gui` also works directly inside WSL with manual USB attachment and WSLg. If PowerShell's script policy blocks the launcher, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Gui -Distro Ubuntu-22.04` for that invocation.
 
 ## macOS
 
-On an Intel or Apple silicon Mac, install [Homebrew](https://brew.sh), install the native tools, and start the launcher:
+The native Mac path is **experimental**: GUI/Finder launch, Intel/Apple silicon USB transfers and real robot behavior have not been verified. Install [Homebrew](https://brew.sh) and native tools with a matching Python/Tk pair. This example explicitly selects Python 3.12:
 
 ```sh
-brew install python dfu-util libusb e2fsprogs
+brew install python@3.12 python-tk@3.12 dfu-util libusb e2fsprogs
 git clone https://github.com/Paskooter/Jibo-DFU-Mod-Toolkit.git
 cd Jibo-DFU-Mod-Toolkit
-./run.sh
+JIBO_PYTHON="$(brew --prefix python@3.12)/bin/python3.12" ./run.sh --gui
 ```
 
-The launcher does not install packages itself: it checks the tools above before opening the menu and prints the exact install command if one is missing. Installing Homebrew also installs the Xcode Command Line Tools (`cc`, `make`, `git`) that the first launch uses to build the ShofEL entry helper from the pinned in-repo payloads, so no ARM cross-compiler is needed. That helper is downloaded, built once on the first launch (internet required), and reused afterwards. No `sudo` is needed on a Mac, and backups are saved under the invoking owner's `~/Jibo-Backups`. On Apple silicon, open a native Terminal session with Rosetta disabled.
+If you already use another Python 3.10+ version, install its matching `python-tk@X.Y` package and use `JIBO_PYTHON` to select that interpreter. A Finder launch must also resolve a Python with matching Tk; the terminal command above is the explicit path when several Python versions are installed.
+
+The launcher does not install packages itself: it checks the tools above before opening the interface and prints the exact install command if one is missing. Installing Homebrew also installs the Xcode Command Line Tools (`cc`, `make`, `git`) that the first launch uses to build the ShofEL entry helper from the pinned in-repo payloads, so no ARM cross-compiler is needed. That helper is downloaded, built once on the first launch (internet required), and reused afterwards. No `sudo` is needed on a Mac, and backups are saved under the invoking owner's `~/Jibo-Backups`. On Apple silicon, open a native Terminal session with Rosetta disabled.
 
 For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php) and point the launcher at its prefix:
 
 ```sh
-sudo port install python312 dfu-util libusb e2fsprogs
-JIBO_MAC_PREFIX=/opt/local ./run.sh
+sudo port install python312 py312-tkinter dfu-util libusb e2fsprogs
+JIBO_PYTHON=/opt/local/bin/python3.12 JIBO_MAC_PREFIX=/opt/local ./run.sh --gui
 ```
 
 See [macOS setup and verification](docs/macos.md) for architecture notes, tool selection, `JIBO_*` overrides, and the current hardware-verification results.
@@ -131,12 +164,12 @@ sudo python3 dist/jibo-dfu-linux-x86_64.pyz
 
 To rebuild the loader itself, extract `vendor/jibo-ram-dfu-v1-source.tar.gz` and follow [the loader build notes](docs/loader-build.md) with `--file-level-candidate`. That separate build needs the matching Buildroot host toolchain. To run the Python source directly instead of a `.pyz`, place the matching image at `./loader.bin`, place `shofel2_t124`, `intermezzo.bin`, and `dfu_stage2.bin` together in `./tools/`, then run `sudo python3 jibo_dfu.py`.
 
-## Using the menu
+## Using the toolkit
 
 See [RTM images and factory calibration](docs/rtm-images-and-calibration.md)
 for the archived RTM packages and the factory's calibration steps.
 
-With the robot in RCM/APX, choose **Enter DFU with ShofEL** first. The menu refreshes the robot state and available actions automatically when USB changes; `r` also refreshes manually. The current loader uses Meerkat Rev02 RAM slots 2 and 3; only slot 2 has been confirmed on hardware. Select it for a robot whose hardware profile matches. Once DFU is active, the menu offers:
+With the robot in RCM/APX, choose **Enter DFU with ShofEL** first. Both interfaces refresh robot state and available actions automatically when USB changes. In the GUI, use **Refresh USB**, F5 or Ctrl+R; in the TUI, `r` refreshes manually. The current loader uses Meerkat Rev02 RAM slots 2 and 3; only slot 2 has been confirmed on hardware. Select it for a robot whose hardware profile matches. Once DFU is active, both interfaces offer:
 
 | Action | What it does |
 | --- | --- |
