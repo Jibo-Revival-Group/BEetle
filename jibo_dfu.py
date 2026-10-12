@@ -3065,6 +3065,12 @@ def _launch_menu():
     return result
 
 
+def _launch_gui():
+    """Open the graphical window; it falls back to the text menu if Tk is unavailable."""
+    import jibo_gui_core
+    return jibo_gui_core.launch(sys.modules[__name__], fallback=_launch_menu)
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:
@@ -3072,6 +3078,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__ + " Run without arguments to open the menu.")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("interactive", help="Open the guided text menu")
+    sub.add_parser("gui", help="Open the graphical window (same actions as the text menu)")
     sub.add_parser("detect", help="Show matching USB devices as JSON")
     sub.add_parser("list", help="Show matching USB devices in plain language")
     shofel_entry = sub.add_parser("enter-dfu-shofel",
@@ -3236,6 +3243,8 @@ def main(argv=None):
     try:
         if args.command == "interactive":
             return _launch_menu()
+        if args.command == "gui":
+            return _launch_gui()
         if args.command == "detect":
             result = devices()
         elif args.command == "list":
