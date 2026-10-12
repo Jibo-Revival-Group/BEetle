@@ -127,8 +127,95 @@ contacted, no partition was written, no signing material was used, and no
 remote branch was pushed. Windows and macOS results below are not hardware
 or native desktop acceptance.
 
-Execution receipts and screenshots are being finalized for this branch;
-see the final verified counts in the following section once recorded.
+### Verified locally
+
+Recorded on 2026-10-12 UTC from clean revision
+`51a6bf176430e9b085bce7c87f4cd52634192921` (the subsequent report commit changes
+only this document). Python 3.10 and the test-only Tk 8.6.12 overlay were used.
+
+| Lane / command | Real execution result |
+| --- | --- |
+| Baseline before completion: `python3 -m pytest -q` | **273 passed, 47 subtests passed** |
+| Final headless suite: `python3 -m pytest -q` | **346 passed, 13 intentionally skipped, 47 subtests passed** |
+| Final real-window suite: `JIBO_GUI_TEST_DISPLAY=1 xvfb-run -a python3 -m pytest -q` | **359 passed, 47 subtests passed**, no skips |
+| Original unittest lane: `python3 -m unittest discover -s tests -q` | **273 tests, OK** |
+| GUI-specific test collection | **86 cases**: 61 headless controller, 12 launcher/package, 13 actual Tk window cases |
+| Source real-window walkthrough: `scripts/gui_smoke.py` | **103 screenshots, 459 checks, 0 Tk callback errors** |
+| Same walkthrough using modules extracted from a test `.pyz` | **103 screenshots, 459 checks, 0 Tk callback errors** |
+| Existing Node renderer/OTA tests, five invocations | **92 passed**: 8 OTA helper, 28 current X11, 28 early X11, 20 DOM display, 8 DOM source |
+| `bash -n` on all four shell entries; `desktop-file-validate` | Exit **0** |
+
+The two final walkthrough lanes produced **206 screenshots and 918 checks**
+in total. Each walkthrough exercised real Tk widgets, a real worker thread,
+Cancel/Confirm and password flows, numeric progress, fallback/errors, local
+mode/Wi-Fi edits, selected-var backup/restore, all update policies, boot-status
+removal, 920×640 scrollable review, actual file/manifest/folder dialogs, and
+native close-warning/default-No quit dialogs. Each lane recorded 20 fake
+backend calls and 10 approved **simulated** device-write operations; these
+are not hardware writes.
+
+Evidence paths (local, ephemeral `/dev/shm`, not committed):
+
+- `/dev/shm/dfu-gui-shots/receipt.json` and the 103 named source screenshots
+  directly beside it; `sheet-00.png` through `sheet-12.png` are contact sheets.
+- `/dev/shm/dfu-gui-shots/packaged/receipt.json` and its 103 screenshots.
+  Receipts identify the actual imported GUI/controller/TUI file paths and
+  include screenshot hashes, checks and `dirty: false`.
+- `pytest-headless.xml`, `pytest-xvfb.xml`, `unittest.log`, `node-results.json`
+  and the five `node-*.log` files under `/dev/shm/dfu-gui-shots/`.
+- `/dev/shm/dfu-gui-package/artifact.json`, `fake-inputs.pyz` and `runtime/`.
+  All **14 checked runtime source/asset files** extracted from that archive
+  matched the checkout byte-for-byte. Both GUI modules and the private TUI
+  source were imported from the extracted directory during the packaged lane.
+  **The archive uses synthetic test loader/tool inputs and test loader pins;
+  it is not a flashable or distributable production package.** This proves
+  GUI inclusion/extraction/runtime behavior, not a native-tools release build.
+- An earlier exploratory `expanded-preview/` receipt is marked dirty and is
+  not counted or cited as final evidence.
+
+The source screenshots were visually reviewed across the contact sheets,
+with full-size review and native modal checks. No major clipping or overlap
+was found, including the minimum-size review footer, scrollbar and both
+buttons. The visible boot checkbox was checked by default; the armed review
+showed an enabled red Confirm button. Initial pale Confirm is intentional,
+not a disabled-workflow bug. Small secondary text at contact-sheet scale is
+not evidence of Windows/macOS DPI or accessibility acceptance.
+
+### Defects found and proved fixed
+
+Real-window tests initially exposed Tk `Tcl_Obj` conversion errors in label
+wrapping, the missing boot-status checkbox and missing checklist keyboard
+navigation. Later named failing tests exposed an approval-to-close race,
+stale enabled actions after USB enumeration failure, and misleading “quick
+edit” titles on full-var operations. Desktop validation caught missing `$`
+escaping in the Linux entry. These were fixed and the real lanes rerun.
+No backend device-operation code, `jibo_tui.py`, `jibo_images.py` or pinned
+boot assets were changed by the GUI completion work.
+
+Two independent negative controls also ran on disposable **fake-only** copies
+of the controller, leaving the repository untouched:
+
+- Removing the busy guard made
+  `test_duplicate_start_and_refresh_refused_until_action_finishes` fail:
+  **1 failed**, expected exit 1.
+- Forcing review approval made
+  `test_mode_write_requires_explicit_confirm` fail for rejected answers:
+  **8 failed, 2 passed**, expected exit 1. The two explicit-confirm cases
+  continued to pass, distinguishing approval from mere backend invocation.
+
+Actual outputs are in `falsification.json`, `falsify-duplicate-start.log` and
+`falsify-explicit-approval.log` under the screenshot directory. The unmodified
+controller's corresponding tests pass.
+
+### Environment issue, not a product test result
+
+Invoking this host's standalone `pytest` executable initially omitted the
+checkout from its import path and caused collection errors. Using
+`python3 -m pytest` resolved that; no dependency installation or fabricated
+results were substituted. System Python has no installed Tk, so the already
+available extracted overlay was reused. There is no PowerShell runtime on
+this host: the Windows launcher received structural assertions only, not a
+PowerShell execution claim.
 
 ### Reproduce the fake lanes
 
