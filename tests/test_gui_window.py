@@ -22,7 +22,8 @@ def window():
     root.update()
     yield w
     w.controller._busy = False
-    w.close()
+    if not w.closed:
+        w.close()
     assert not errors, errors
 
 
@@ -121,6 +122,28 @@ def test_close_refuses_to_interrupt_active_transfer(window):
         window.close()
     assert warn.call_count == 1 and not window.closed
     window.controller._busy = False
+
+
+def test_close_cannot_treat_already_approved_prompt_as_cancellable(window):
+    window.controller._busy = True
+    pending = core.Prompt("confirm", "Confirm var write")
+    pending.resolve("confirm")
+    window.controller._pending = pending
+    with patch("jibo_gui.messagebox.showwarning") as warning, \
+            patch("jibo_gui.messagebox.askyesno", return_value=True) as question:
+        window.close()
+    assert warning.call_count == 1 and not question.called and not window.closed
+    window.controller._busy = False
+
+
+def test_full_var_flow_titles_do_not_claim_quick_edit(window):
+    window.controller._active_label = "Set mode and configure Wi-Fi (quick edit)"
+    assert "quick edit" not in window._kicker()
+    window.show_outcome(core.Outcome("result", "set-mode-wifi",
+                       "Set mode and configure Wi-Fi (quick edit)", ("Done",), "verified"))
+    text = [str(widget.cget("text")) for widget in window.page.winfo_children()
+            if "text" in widget.keys()]
+    assert not any("quick edit" in value for value in text)
 
 
 def test_close_prompt_defaults_no_and_does_not_quit_on_refusal(window):

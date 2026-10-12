@@ -1,11 +1,29 @@
 # Jibo DFU Mod Toolkit
 
-A guided terminal tool for Jibo recovery, backups, mode and Wi-Fi settings, and official update packages. It runs on Linux, WSL, and macOS with the same guided menu and RCM-to-DFU entry on each. The workflow has two USB states:
+A guided terminal tool with an optional graphical window for Jibo recovery, backups, mode and Wi-Fi settings, and official update packages. It runs on Linux, WSL, and macOS with the same guided menu and RCM-to-DFU entry on each. The workflow has two USB states:
 
 1. Put the robot in **RCM/APX** (`0955:7740`). The toolkit uses ShofEL to load its recovery program into RAM.
 2. The robot reappears in **DFU** (`0955:701a`). All partition reads and writes use DFU. ShofEL is used only for the RCM-to-DFU entry step.
 
 The guided menu enables DFU entry when the robot is in RCM and partition actions after it appears in DFU. The launchers below open that menu. On Linux, the `.pyz` package is generated locally and reused on later runs; on macOS, the launcher runs the Python source directly.
+
+## Graphical window (optional)
+
+Use `./run.sh --gui` on Linux/macOS, or `.\run.ps1 -Gui` on Windows with
+WSL 2 + WSLg. For double-click launch, keep these files in the toolkit folder:
+
+- **Windows:** `run-gui.cmd` (same WSL/usbipd helper as the text menu).
+- **macOS:** `Jibo DFU Toolkit.command` (requires matching Python/Tk support).
+- **Linux:** `Jibo DFU Toolkit.desktop` (your file manager may require Allow Launching).
+
+The Tkinter/ttk GUI offers the same device operations and exact reviewed
+confirmation flows as the text menu, including the ON-by-default boot-network
+checkbox for developer mode + Wi-Fi setup. It shows USB state and progress,
+refuses duplicate starts, and does not allow window closure during a transfer.
+Running the original launchers **without a GUI flag still opens the TUI**.
+See [GUI setup, safety, verification and open platform gates](docs/gui.md).
+Linux Xvfb/fake-device verification does not establish Windows/macOS or robot
+hardware acceptance.
 
 ## Quick path: stock Jibo to int-developer
 

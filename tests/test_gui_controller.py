@@ -109,6 +109,17 @@ def test_mismatched_password_cancel_never_calls_device_edit(action, answers):
     assert "testpass1" not in repr(prompts)
 
 
+@pytest.mark.parametrize("stop", range(7))
+def test_combined_flow_cancellation_at_every_prompt_never_writes(stop):
+    api = FakeApi()
+    answers = ["developer", "Test network", "protected", "testpass1", "testpass1", "install", "confirm"]
+    answers[stop] = None
+    c, prompts = controller(api, answers[:stop + 1])
+    c.start_action("set-mode-wifi")
+    assert outcome(c).status == "cancelled" and not api.writes
+    assert len(prompts) == stop + 1
+
+
 def test_protected_wifi_requires_two_matching_entries_and_review():
     api = FakeApi()
     c, prompts = controller(api, ("Test network", "protected", "testpass1", "testpass1", "confirm"))
@@ -235,6 +246,45 @@ def test_duplicate_start_and_refresh_refused_until_action_finishes():
     assert not c.busy and len(c.api.calls) == 1
 
 
+def test_usb_probe_and_action_are_serialized_and_stale_probe_cannot_enable_actions():
+    api = FakeApi()
+    c, _ = controller(api)
+    entered, release = threading.Event(), threading.Event()
+    original = api.devices
+    def blocking_probe():
+        entered.set()
+        assert release.wait(3)
+        return original()
+    api.devices = blocking_probe
+    c._runner = core.thread_runner
+    assert c.request_refresh()
+    assert entered.wait(2)
+    assert c.start_action("backup-var")
+    assert c.busy and not c.request_refresh()
+    assert not api.calls  # action is waiting for the USB probe lock
+    release.set()
+    # Poll the completion queue rather than relying on a blind sleep.
+    deadline = __import__("time").monotonic() + 3
+    while __import__("time").monotonic() < deadline:
+        event = c._events.get(timeout=3)
+        if event[0] == "finished":
+            assert event[1].kind == "result"
+            break
+    else:
+        pytest.fail("action did not finish")
+    assert not c.busy and len(api.calls) == 1
+
+
+def test_safe_shutdown_refuses_already_approved_prompt():
+    c, _ = controller()
+    c._busy = True
+    c._pending = core.Prompt("confirm", "Confirm write")
+    c._pending.resolve("confirm")
+    assert not c.shutdown_if_safe() and not c._closing
+    c._pending = core.Prompt("text", "Wi-Fi")
+    assert c.shutdown_if_safe() and c._pending.answered and c._closing
+
+
 def test_shutdown_releases_pending_prompt_without_writing():
     c = core.GuiController(FakeApi())
     # Do the initial probe synchronously, then use a real action thread.
@@ -274,12 +324,56 @@ def test_unavailable_gui_explains_tk_and_wslg_and_text_menu():
     assert "WSLg" in text and "wsl --update" in text and "without --gui" in text
 
 
+def test_launch_missing_tk_is_actionable_without_calling_device_api():
+    import builtins
+    original_import = builtins.__import__
+    def missing_tk(name, *args, **kwargs):
+        if name == "jibo_gui":
+            raise ModuleNotFoundError("No module named _tkinter", name="_tkinter")
+        return original_import(name, *args, **kwargs)
+    api = FakeApi()
+    stream = io.StringIO()
+    with patch("builtins.__import__", side_effect=missing_tk), \
+            patch.object(core, "_terminal_available", return_value=False):
+        assert core.launch(api, stream=stream) == 2
+    assert "python3-tk" in stream.getvalue() and "text menu" in stream.getvalue()
+    assert not api.calls
+
+
+def test_unrelated_import_error_is_not_hidden_as_missing_tk():
+    import builtins
+    original_import = builtins.__import__
+    def broken_code(name, *args, **kwargs):
+        if name == "jibo_gui":
+            raise ImportError("Unrelated programming error", name="missing_project_module")
+        return original_import(name, *args, **kwargs)
+    with patch("builtins.__import__", side_effect=broken_code):
+        with pytest.raises(ImportError, match="programming error"):
+            core.launch(FakeApi())
+
+
 def test_missing_tk_fallback_only_runs_with_terminal():
     stream = io.StringIO()
     with patch.object(core, "_terminal_available", return_value=False):
         assert core._fall_back("Tk unavailable", lambda: pytest.fail("not a terminal"), stream) == 2
     with patch.object(core, "_terminal_available", return_value=True):
         assert core._fall_back("Tk unavailable", lambda: 17, stream) == 17
+
+
+def test_failed_usb_refresh_disables_previously_ready_actions():
+    api = FakeApi()
+    c, _ = controller(api)
+    api.devices = lambda: (_ for _ in ()).throw(RuntimeError("Fake USB enumeration failed"))
+    c.request_refresh()
+    snap = c.snapshot()
+    assert not snap.checked
+    assert snap.headline == "USB check failed"
+    assert "Fake USB enumeration failed" in snap.detail
+    assert not any(item.enabled for item in snap.items)
+    assert not c.start_action("set-mode") and not api.calls
+    api.devices = lambda: [{"port": "1-1", "state": "dfu"}]
+    c.request_refresh()
+    assert c.snapshot().checked and any(i.enabled for i in c.snapshot().items)
 
 
 def test_failed_device_action_is_not_reported_as_success():

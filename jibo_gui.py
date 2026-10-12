@@ -49,6 +49,12 @@ _TONES = {
 }
 
 
+def display_label(label):
+    # The shared menu reports quick-file capability, not the transfer chosen
+    # later (boot diagnostics and unsupported layouts use full-var instead).
+    return str(label).removesuffix(" (quick edit)")
+
+
 def _family(root, candidates):
     available = {name.lower(): name for name in tkfont.families(root)}
     for name in candidates:
@@ -259,7 +265,7 @@ class ActionRow(tk.Frame):
                          cursor="hand2" if item.enabled else "arrow")
         self.body = tk.Frame(self, bg=bg)
         self.body.pack(side="left", fill="both", expand=True, padx=(18, 10), pady=(11, 12))
-        self.title = tk.Label(self.body, text=item.label, font=theme.bold, bg=bg, anchor="w",
+        self.title = tk.Label(self.body, text=display_label(item.label), font=theme.bold, bg=bg, anchor="w",
                               justify="left",
                               fg=P["text"] if item.enabled else P["disabled"])
         self.title.pack(fill="x")
@@ -638,7 +644,7 @@ class ToolkitWindow:
         self.controls = {}
         snap = self.controller.snapshot()
         self.progress_kicker.configure(text="RUNNING")
-        self.progress_title.configure(text=snap.active_label or "Working")
+        self.progress_title.configure(text=display_label(snap.active_label) or "Working")
         self._show("progress", self.progress)
         self.render_output()
 
@@ -735,7 +741,7 @@ class ToolkitWindow:
             self.show_home()
 
     def _kicker(self):
-        return self.controller.snapshot().active_label
+        return display_label(self.controller.snapshot().active_label)
 
     def _build_select(self, page, prompt):
         if (prompt.title == "Boot screen network status" and
@@ -839,10 +845,11 @@ class ToolkitWindow:
         cancel = ttk.Button(buttons, text=labels.get("cancel", "Cancel"),
                             command=lambda: self.answer(None))
         cancel.pack(side="right", padx=(0, 10))
-        hint = tk.Label(buttons, text="Cancel is selected. Nothing changes until you "
-                        "select Confirm.", font=self.theme.small, bg=P["bg"], fg=P["muted"],
+        hint = tk.Label(buttons, text="Cancel is the default. Confirm unlocks after a brief safety delay.",
+                        font=self.theme.small, bg=P["bg"], fg=P["muted"],
                         anchor="w")
-        hint.pack(side="left")
+        hint.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        _wrapping(hint)
         # A double-click carried over from the previous page must not confirm.
         confirm.state(["disabled"])
         self._confirm_job = self.root.after(_CONFIRM_ARM_MS, lambda: confirm.winfo_exists() and
@@ -1034,7 +1041,7 @@ class ToolkitWindow:
         page = self._new_page("result")
         tk.Label(page, text=badge, font=self.theme.caps, bg=background, fg=foreground,
                  padx=10, pady=3).pack(anchor="w", pady=(0, 10))
-        self._header(page, outcome.title or "Finished")
+        self._header(page, display_label(outcome.title) or "Finished")
         buttons = self._button_bar(page)
         summary = tk.Frame(page, bg=P["surface"], highlightthickness=1,
                            highlightbackground=P["border"])
@@ -1128,8 +1135,11 @@ class ToolkitWindow:
         return None
 
     def close(self):
+        if self.closed:
+            return
         if self.controller.busy:
-            if self.controller.pending_prompt is None:
+            pending = self.controller.pending_prompt
+            if pending is None or pending.answered:
                 messagebox.showwarning(
                     "Operation in progress",
                     "A robot operation is still running. Closing the window now could "
@@ -1140,8 +1150,12 @@ class ToolkitWindow:
                     "The open question will be answered with Cancel, then the window "
                     "closes. Quit now?", icon="warning", default="no", parent=self.root):
                 return
+        if not self.controller.shutdown_if_safe():
+            messagebox.showwarning("Operation in progress",
+                                   "The question was already answered. Wait until the operation finishes.",
+                                   parent=self.root)
+            return
         self.closed = True
-        self.controller.shutdown()
         for job in (self._confirm_job, getattr(self, "_poll_job", None),
                     getattr(self, "_refresh_job", None)):
             if job is not None:

@@ -83,6 +83,8 @@ def main():
             shot(name)
             if answer == "confirm":
                 pump_until(lambda: not w.controls["primary"].instate(["disabled"]))
+                if name == "18-combined-full-var-review":
+                    shot(name + "-armed")
                 w.controls["primary"].invoke()
             else:
                 w.controls["cancel"].invoke()
@@ -223,6 +225,12 @@ def main():
             pump_until(lambda: c.snapshot().readiness.state == "dfu-error")
             w.render_state()
             shot("84-usb-access-error")
+            api.devices = lambda: (_ for _ in ()).throw(RuntimeError("FAKE USB enumeration failed"))
+            c.request_refresh()
+            pump_until(lambda: c.snapshot().headline == "USB check failed")
+            w.render_state()
+            shot("84a-usb-enumeration-error")
+            check(not any(i.enabled for i in c.snapshot().items), "failed USB probe disables stale actions")
             # Supplemental screen type and small-window layout coverage.
             w.show_prompt(core.Prompt("message", "No device changes", lines=("A local image inspection is read-only.",)))
             shot("85-message-screen")
@@ -234,6 +242,8 @@ def main():
             shot("86-small-window-scrollable-review")
             review = w.controls["review"]
             check(review.bar.winfo_ismapped(), "long review has scrollbar")
+            pump_until(lambda: not w.controls["primary"].instate(["disabled"]))
+            shot("86-small-window-review-armed")
             w.controls["cancel"].invoke()
             check(not callback_errors, "zero Tk callback errors")
             w.close()
@@ -246,6 +256,7 @@ def main():
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
     receipt = {"revision": revision, "dirty": dirty, "runtime_root": str(args.runtime_root.resolve()),
                "gui_source": gui.__file__, "controller_source": core.__file__,
+               "flow_source": c.flows.__file__,
                "fake_device": True, "screenshots": shots, "screenshot_count": len(shots),
                "checks": checks, "check_count": len(checks), "tk_callback_errors": callback_errors,
                "fake_write_count": len(api.writes), "fake_call_count": len(api.calls)}

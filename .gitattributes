@@ -2,6 +2,9 @@
 *.py text eol=lf
 *.patch text eol=lf
 *.ps1 text eol=lf
+*.command text eol=lf
+*.desktop text eol=lf
+*.cmd text eol=crlf
 
 # Preserve hash-pinned asset bytes on every desktop platform.
 assets/boot-network-status/* text eol=lf

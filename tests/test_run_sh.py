@@ -93,7 +93,10 @@ printf '%s %s\n' "$name" "$*" >> "$JIBO_TEST_TRACE"
 case "$name" in
   python3)
     case "${1-}" in
-      -c|--version|-V) exit 0 ;;
+      -c)
+        if [ "${2-}" = 'import tkinter' ] && [ "${JIBO_TEST_TK_MISSING:-0}" = 1 ]; then exit 1; fi
+        exit 0 ;;
+      --version|-V) exit 0 ;;
       *check_package.py)
         if [ "${FAIL_PACKAGE_CHECK_ONCE:-0}" = 1 ]; then
           marker="$JIBO_TEST_BIN/package-check-failed"

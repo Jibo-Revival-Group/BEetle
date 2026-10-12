@@ -248,6 +248,7 @@ class GuiController:
         # immediately; until then no robot action is offered.
         self.menu = None
         self._checked = False
+        self._probe_error = ""
         self._readiness = self.flows.Readiness("none", ())
         self._items = self.flows.build_menu_items(self._readiness)
 
@@ -270,20 +271,26 @@ class GuiController:
         with self._lock:
             readiness, items, busy = self._readiness, self._items, self._busy
             note, label, checked = self._note, self._active_label, self._checked
+            probe_error = self._probe_error
         first, second = self.flows.status_lines(readiness)
         step_label, _, headline = first.partition("   ")
         if not checked:
             step_label, headline = "USB", "Checking the USB connection..."
             second = "Looking for a Jibo in RCM/APX or DFU mode."
+            if probe_error:
+                step_label, headline = "USB", "USB check failed"
+                second = probe_error + " Refresh USB to retry; previous device state is not trusted."
         if busy or not checked:
-            reason = BUSY_REASON if busy else "Checking the USB connection..."
+            reason = (BUSY_REASON if busy else
+                      "USB state could not be checked. Refresh USB to retry." if probe_error else
+                      "Checking the USB connection...")
             items = tuple(self.flows.MenuItem(item.key, item.label, False, reason)
                           for item in items)
         return Snapshot(readiness=readiness, items=items, busy=busy, checked=checked,
                         active_label=label, note=note, step_label=step_label.strip(),
                         headline=(headline or first).strip(), detail=second,
-                        port=readiness.port, step_index=_STEP_FOR_STATE.get(readiness.state, 0),
-                        warning=readiness.state in _WARNING_STATES)
+                        port=readiness.port if checked else "", step_index=_STEP_FOR_STATE.get(readiness.state, 0),
+                        warning=bool(probe_error) or readiness.state in _WARNING_STATES)
 
     def hint(self, item):
         """The same explanation line the text menu shows under the selection."""
@@ -364,7 +371,8 @@ class GuiController:
             self._probing = False
             if self._busy or generation != self._generation:
                 return
-            self._checked = True
+            self._checked = error is None
+            self._probe_error = str(error) if error is not None else ""
             if error is not None:
                 self._note = "USB check failed: " + str(error)
             elif result is not None:
@@ -485,6 +493,17 @@ class GuiController:
             with self._lock:
                 if self._pending is prompt:
                     self._pending = None
+
+    def shutdown_if_safe(self):
+        """Atomically refuse window closure once a prompt has approved a transfer."""
+        with self._lock:
+            pending = self._pending
+            if self._busy and (pending is None or pending.answered):
+                return False
+            self._closing = True
+            if pending is not None:
+                pending.resolve(None)
+            return True
 
     def shutdown(self):
         """Cancel any open prompt; later prompts cancel immediately."""

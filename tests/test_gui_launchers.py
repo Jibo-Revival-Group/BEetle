@@ -1,5 +1,6 @@
 """Launcher checks using command stubs, never sudo/package installs/USB/network."""
 import configparser
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -43,6 +44,15 @@ def test_linux_gui_flag_selects_gui_not_default_text_menu(linux):
     assert line.endswith(".pyz gui"), events
 
 
+def test_linux_missing_tk_attempts_supported_package_then_explains_fallback(linux):
+    result = subprocess.run([linux_tests.BASH, str(linux.repo / "run.sh"), "--gui"],
+                            env={**linux.env, "JIBO_TEST_TK_MISSING": "1"},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert any(e == "apt-get install -y python3-tk" for e in linux.events())
+    assert "Tk is unavailable" in result.stdout
+
+
 def test_linux_gui_sudo_preserves_only_display_environment(linux):
     result = subprocess.run([linux_tests.BASH, str(linux.repo / "run.sh"), "--gui"],
                             env={**linux.env, "DISPLAY": ":42", "XAUTHORITY": "/tmp/fake-xauth"},
@@ -56,6 +66,21 @@ def test_linux_gui_sudo_preserves_only_display_environment(linux):
 def test_mac_gui_flag_routes_to_native_source(mac):
     result = mac.launch("--gui")
     assert result.returncode == 0, result.stderr
+    assert mac.trace.read_text().splitlines()[-1] == "gui"
+
+
+def test_mac_missing_tk_hint_uses_selected_python_version(mac):
+    mac.stub("python3", '''#!/bin/sh
+if [ "$1" = -c ]; then
+  if [ "$2" = 'import tkinter' ]; then exit 1; fi
+  case "$2" in *sys.version_info*) printf '3.12\\n';; esac
+  exit 0
+fi
+printf '%s\\n' "$@" >> "$JIBO_TEST_TRACE"
+''')
+    result = mac.launch("--gui")
+    assert result.returncode == 0, result.stderr
+    assert "brew install python-tk@3.12" in result.stderr
     assert mac.trace.read_text().splitlines()[-1] == "gui"
 
 
@@ -95,6 +120,25 @@ def test_desktop_launcher_is_valid_and_passes_its_path_as_argument():
     assert "run-gui.sh" in entry["Exec"]
 
 
+def test_desktop_exec_runs_through_real_gio_parser_with_spaces(tmp_path):
+    pytest.importorskip("gi")
+    from gi.repository import Gio
+    repo = tmp_path / "folder with spaces"
+    repo.mkdir()
+    desktop = repo / "Jibo DFU Toolkit.desktop"
+    # Only disable Terminal in this throwaway copy; execute the real Exec parser.
+    desktop.write_text((ROOT / desktop.name).read_text().replace("Terminal=true", "Terminal=false"))
+    trace = repo / "trace"
+    (repo / "run-gui.sh").write_text('#!/bin/bash\nprintf "%s" "$PWD" > trace\n')
+    info = Gio.DesktopAppInfo.new_from_filename(str(desktop))
+    assert info is not None and info.launch([], None)
+    import time
+    deadline = time.monotonic() + 3
+    while not trace.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert trace.read_text() == str(repo)
+
+
 def test_windows_wrapper_preserves_wsl_helper_and_explicit_gui_switch():
     launcher = (ROOT / "run.ps1").read_text()
     wrapper = (ROOT / "run-gui.cmd").read_text()
@@ -122,5 +166,16 @@ def test_package_contains_gui_and_rejects_stale_view():
             assert archive.read("jibo_gui.py") == (ROOT / "jibo_gui.py").read_bytes()
             assert archive.read("jibo_gui_core.py") == (ROOT / "jibo_gui_core.py").read_bytes()
         assert {"jibo_gui.py", "jibo_gui_core.py"} <= set(checker.SOURCES)
+        source = fixture.root / "source"
+        for name in (*checker.SOURCES, "patches/shofel2-dfu-entry.patch"):
+            path = source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / name, path)
+        with patch.object(checker, "PINNED_LOADER_SIZE", len(fixture.padded_loader)), \
+                patch.object(checker, "PINNED_LOADER_SHA256", hashlib.sha256(fixture.padded_loader).hexdigest()):
+            assert checker.check_package(fixture.output, source) == (True, "ready")
+            (source / "jibo_gui.py").write_text("changed GUI view")
+            ready, reason = checker.check_package(fixture.output, source)
+            assert not ready and "jibo_gui.py has changed" in reason
     finally:
         fixture.doCleanups()
