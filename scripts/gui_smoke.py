@@ -59,16 +59,19 @@ def main():
             time.sleep(0.01)
         raise AssertionError("GUI state timed out: " + w.page_name)
 
-    def shot(name):
+    def shot(name, popup=None):
         root.update()
         check(not callback_errors, "callbacks clean: " + name)
         check(root.winfo_viewable(), "window visible: " + name)
         path = out / (name + ".png")
         check(name not in {s["name"] for s in shots}, "unique screen: " + name)
-        subprocess.run(["import", "-window", str(root.winfo_id()), str(path)], check=True, timeout=10)
-        shots.append({"name": name, "path": str(path), "page": w.page_name,
-                      "title": w.prompt.title if w.prompt else "",
-                      "width": root.winfo_width(), "height": root.winfo_height(),
+        window_id = root.winfo_id() if popup is None else root.tk.call("winfo", "id", popup)
+        subprocess.run(["import", "-window", str(window_id), str(path)], check=True, timeout=10)
+        shots.append({"name": name, "popup": popup, "path": str(path), "page": w.page_name,
+                      "title": str(root.tk.call("wm", "title", popup)) if popup else
+                               w.prompt.title if w.prompt else "",
+                      "width": int(root.tk.call("winfo", "width", popup)) if popup else root.winfo_width(),
+                      "height": int(root.tk.call("winfo", "height", popup)) if popup else root.winfo_height(),
                       "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
 
     def prompt_screen(name, answer):
@@ -114,6 +117,18 @@ def main():
             shot(name)
             w.controls["primary" if answer is not None else "cancel"].invoke()
         pump_until(lambda: w.prompt is not p)
+
+    def dismiss_popup(name):
+        # Drive actual Tk dialogs through their nested event loop, never mocks.
+        def capture_and_cancel():
+            popups = [str(child) for child in root.tk.call("winfo", "children", ".")
+                      if bool(int(root.tk.call("winfo", "toplevel", child) == str(child)))
+                      and bool(int(root.tk.call("winfo", "viewable", child)))]
+            check(len(popups) == 1, "one native dialog: " + name)
+            popup = popups[0]
+            shot(name, popup=popup)
+            root.tk.call("event", "generate", popup, "<Escape>")
+        root.after(300, capture_and_cancel)
 
     def flow(key, entries, result_name):
         w.show_home()
@@ -200,6 +215,11 @@ def main():
             flow("more-tools", [("66-inspect-tool", "inspect-backup"), ("67-inspect-local-path", "/tmp/var.img")], "68-inspect-result")
             flow("more-tools", [("69-edit-tool", "edit-backup"), ("70-local-edit-kind", "mode"),
                  ("71-local-edit-path", "/tmp/var.img"), ("72-local-edit-mode", "developer")], "73-local-edit-result")
+            flow("more-tools", [("73a-local-wifi-tool", "edit-backup"),
+                 ("73b-local-wifi-kind", "wifi"), ("73c-local-wifi-path", "/tmp/var.img"),
+                 ("73d-local-wifi-ssid", "Example network"), ("73e-local-wifi-security", "protected"),
+                 ("73f-local-wifi-password", "examplepass1"), ("73g-local-wifi-repeat", "examplepass1")],
+                 "73h-local-wifi-result")
             flow("more-tools", [("74-gpt-tool", "probe-dfu-gpt")], "75-gpt-result")
             old_quick = api.set_mode_file_live
             api.set_mode_file_live = lambda *a, **k: (_ for _ in ()).throw(FileLayoutError(4))
@@ -245,6 +265,33 @@ def main():
             pump_until(lambda: not w.controls["primary"].instate(["disabled"]))
             shot("86-small-window-review-armed")
             w.controls["cancel"].invoke()
+            w.show_home()
+            with tempfile.TemporaryDirectory(prefix="gui-picker-") as directory:
+                api.BACKUP_ROOT = Path(directory)
+                (Path(directory) / "fake-var.img").write_bytes(b"fake image-picker fixture")
+                (Path(directory) / "backup-set.json").write_text("{}")
+                w.show_prompt(core.Prompt("text", "Write an edited var image", prompt="Path to edited 500 MiB var image:"))
+                value = w.controls["value"]
+                dismiss_popup("87-image-file-picker")
+                w._browse(value)
+                check(value.get() == "", "file-picker cancel preserves empty input")
+                dismiss_popup("88-backup-manifest-file-picker")
+                w._browse(value, json_file=True)
+                check(value.get() == "", "manifest-picker cancel preserves empty input")
+                dismiss_popup("89-backup-folder-picker")
+                w._browse(value, folder=True)
+                check(value.get() == "", "folder-picker cancel preserves empty input")
+                w.answer(None)
+            c._busy = True
+            dismiss_popup("90-active-operation-close-warning")
+            w.close()
+            check(not w.closed, "native warning prevents active-transfer close")
+            c._pending = core.Prompt("confirm", "Confirm var write")
+            dismiss_popup("91-cancel-and-quit-default-no")
+            w.close()
+            check(not w.closed and not c._pending.answered, "native quit question defaults no")
+            c._busy = False
+            c._pending = None
             check(not callback_errors, "zero Tk callback errors")
             w.close()
     finally:
