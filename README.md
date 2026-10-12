@@ -50,6 +50,12 @@ On Linux, the `.pyz` package is generated locally and reused on later runs; on m
 
 For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. The launchers without a GUI flag still open the text menu. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
 
+## Compatibility
+
+**Any stock Jibo that has never been modified is supported with 100% certainty.** I have personally tested every stock firmware version and all stock files. Windows and Linux have also been tested; macOS is experimental.
+
+If your robot was previously changed by another mod system, it will most likely work with no changes, but that cannot be guaranteed: there is no way to foresee changes someone else made. If it doesn't work, ask in the [Phoenix Discord](https://discord.gg/FyDVYQ6FfV). I'm happy to help.
+
 ## Quick path: stock Jibo to int-developer
 
 If you are here to mod a stock robot, use the guided menu to change its existing installation to `int-developer` mode. **If the robot has not joined your Wi-Fi yet, configure Wi-Fi in the toolkit too:** changing the mode alone does not give it a network connection.
@@ -231,6 +237,20 @@ Removal is under **More tools → Remove boot-screen Wi-Fi/IP status** or in the
 developer-mode setup selector. It removes only the toolkit-owned files and
 loopback line; mode, saved Wi-Fi, identity and calibration are retained. Reboot
 after removal; an existing bind mount lasts for the current boot.
+
+### What Jibo's screen shows
+
+The Wi-Fi/IP line appears only in **developer** or **int-developer** mode with **Show Wi-Fi status and IP on the boot screen** enabled (ON by default in the GUI's **Set mode and configure Wi-Fi** developer-mode setup). After restarting Jibo normally:
+
+| On Jibo's screen | What it means and what to do |
+| --- | --- |
+| `Wi-Fi: checking...` | Jibo is starting up and checking Wi-Fi. Wait for the status to update. |
+| `Wi-Fi: connected to <network name> · IP <address>` | Wi-Fi is connected and Jibo has an IP address. This is the IP address the Phoenix console's **Robots → Add a Jibo** command asks for. |
+| `Wi-Fi: connected, waiting for address` | Jibo has joined the network, but the router has not given him an IP address yet. Wait a minute; if it stays here, check the router and its DHCP settings. |
+| `Wi-Fi: not connected` | Jibo is not connected to Wi-Fi. Check the network name and password, and make sure Jibo is within range of the router. Re-run **Set mode and configure Wi-Fi** or **Add or update a Wi-Fi network** with the correct name and password, then restart Jibo. |
+| `Wi-Fi: status unavailable` | The Wi-Fi status could not be read. Restart Jibo once; if it still appears, ask in the [Phoenix Discord](https://discord.gg/FyDVYQ6FfV). |
+
+If the line is missing, check the mode and enable the option in **Set mode and configure Wi-Fi**, then restart. To remove it, choose **More tools → Remove boot-screen Wi-Fi/IP status**, then restart Jibo. Unchecking the GUI checkbox leaves the current setting unchanged; it does not remove an installed status line.
 
 Equivalent CLI operations (explicit confirmation is still required):
 
