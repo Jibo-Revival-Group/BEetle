@@ -248,11 +248,12 @@ prerequisites, or distributed toolkit artifacts.
 ### Owner-tested platforms
 
 The owner has tested the GUI, USB handoff and real write flows successfully
-on Windows and Linux.
+on Windows and Linux, and the toolkit on an Intel Mac (macOS 10.15, MacPorts
+tools).
 
 ### Open acceptance gates
 
-- **macOS Intel / Apple silicon:** experimental; not yet tested.
+- **macOS Apple silicon:** experimental; not yet tested.
 - **Hardware/firmware:** no new evidence for RAM slot 3, boot-status release
   compatibility on real robots, services-OTA overlay timing, calibration
   preservation or interrupted-flash recovery. Keep all existing README

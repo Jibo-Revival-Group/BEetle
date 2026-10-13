@@ -100,5 +100,7 @@ if [[ ${1:-} == gui ]] && ! "$python" -c 'import tkinter' >/dev/null 2>&1; then
   say "GUI support is missing. For Homebrew: brew install python-tk@$tk_version. For MacPorts install the matching pyXY-tkinter port and the tk port. The app will offer the text menu."
 fi
 
-say 'Experimental macOS workflow: RCM-to-DFU entry is available and unverified on Mac hardware. Partition actions need the Jibo DFU loader it starts.'
+if [[ $machine == arm64 ]]; then
+  say 'Apple silicon is experimental: this workflow has been tested on Intel Macs only. Partition actions need the Jibo DFU loader it starts.'
+fi
 exec "$python" "$repo_dir/jibo_dfu.py" "$@"

@@ -12,8 +12,9 @@ Once DFU is active, the implementation provides device discovery, GPT checks,
 backups, image inspection and editing, settings changes, restores, and official
 update transfers. These operations retain their existing identity checks,
 backups, and confirmation prompts. Mac USB transfers use `dfu-util`; the faster
-Linux usbfs pipeline is unavailable on macOS. Transfer speed and real robot
-behavior have not yet been measured or verified on either Mac architecture.
+Linux usbfs pipeline is unavailable on macOS. The toolkit has been tested on an
+Intel Mac running macOS 10.15 with MacPorts tools, including a `var` backup over
+USB DFU. Apple silicon has not been tested on a robot yet.
 
 ## Choosing dependencies for your Mac
 
@@ -192,7 +193,7 @@ runners have no Jibo attached, so passing CI would establish host portability,
 with robot USB transfers and the RCM-to-DFU entry still requiring hardware
 tests.
 
-The first hardware target is the owner's older Intel Mac. Apple silicon
-requires another tester. Support remains experimental until the tested OS
-versions, USB transfers, entry results, and readback results are recorded for
-each architecture.
+The first hardware target was the owner's older Intel Mac, which has been
+tested. Apple silicon requires another tester, and its support remains
+experimental until its OS versions, USB transfers, entry results and readback
+results are recorded.

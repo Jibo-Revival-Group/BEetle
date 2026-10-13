@@ -346,7 +346,11 @@ printf '%s\\n' "$0" "$JIBO_DFU_UTIL" "${JIBO_LIBUSB:-}" "${JIBO_SHOFEL2:-}" "$@"
             self.trace.unlink(missing_ok=True)
             result = self.launch("inspect-var", "/tmp/backup with spaces.img")
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("RCM-to-DFU entry is available", result.stderr)
+            # Intel Macs are owner-tested; only Apple silicon still shows the experimental notice.
+            if machine == "arm64":
+                self.assertIn("Apple silicon is experimental", result.stderr)
+            else:
+                self.assertNotIn("experimental", result.stderr.lower())
             self.assertEqual(result.stdout, "")
             self.assertEqual(self.trace.read_text().splitlines(), [
                 str(self.bin / "python3"), str(self.bin / "dfu-util"), "", str(self.entry),

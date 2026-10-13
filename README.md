@@ -9,7 +9,7 @@ Clone or download this repository, extract it if needed, and keep the launchers 
 | Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
 | --- | --- | --- | --- |
 | **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
-| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); **experimental** |
+| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); Intel tested, Apple silicon **experimental** |
 | **Linux x86_64** | `Jibo DFU Toolkit.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
 
 Linux file managers may require **Allow Launching** or **Trust** for the `.desktop` file. On macOS, Finder may require **Open** for the `.command` file; it is not a signed/notarized app. First launch may need internet access to build the host tools and may open a terminal for setup or authorization. **Host setup authorization is not consent to write a robot**: each device change has its own review.
@@ -52,7 +52,7 @@ For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro 
 
 ## Compatibility
 
-**Any stock Jibo that has never been modified is supported with 100% certainty.** I have personally tested every stock firmware version and all stock files. Windows and Linux have also been tested; macOS is experimental.
+**Any stock Jibo that has never been modified is supported with 100% certainty.** I have personally tested every stock firmware version and all stock files. Windows, Linux and Intel Macs have also been tested; Apple silicon Macs are experimental.
 
 If your robot was previously changed by another mod system, it will most likely work with no changes, but that cannot be guaranteed: there is no way to foresee changes someone else made. If it doesn't work, ask in the [Phoenix Discord](https://discord.gg/FyDVYQ6FfV). I'm happy to help.
 
