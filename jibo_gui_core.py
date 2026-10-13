@@ -21,10 +21,13 @@ from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass
 import importlib.util
+import json
 import os
+from pathlib import Path
 import queue
 import re
 import sys
+import tempfile
 import threading
 import types
 
@@ -35,6 +38,7 @@ import types
 PROMPT_PRIMITIVES = ("select_option", "select_multiple_options", "text_input", "show_screen")
 CONFIRM_KEYS = ("cancel", "confirm")
 BUSY_REASON = "Another operation is running. Wait for it to finish."
+PHOENIX_GUIDE_URL = "https://jibo.io/guide"
 FLOW_STEPS = ("Connect", "RCM/APX", "DFU", "Choose an action")
 _STEP_FOR_STATE = {"none": 0, "multiple": 0, "rcm": 1, "dfu-error": 2,
                    "dfu-no-marker": 2, "dfu-profile-incomplete": 2, "dfu-ready": 3}
@@ -195,6 +199,7 @@ class Outcome:
     title: str
     lines: tuple
     status: str = ""   # the backend result's status, when it reported one
+    mode: str = ""     # only the result's reported mode, never inferred from a prompt
 
 
 @dataclass(frozen=True)
@@ -227,8 +232,20 @@ def sync_runner(target, _kind):
 class GuiController:
     """State, single-operation guard, and flow driver for one robot session."""
 
-    def __init__(self, api, prompter=None, runner=thread_runner, flows=None):
+    def __init__(self, api, prompter=None, runner=thread_runner, flows=None,
+                 preferences_path=None, browser_opener=None):
         self.api = api
+        self._browser_opener = browser_opener
+        # Embedders/tests may leave persistence off. The real GUI passes a
+        # local path; this never stores a robot identity or network settings.
+        self._preferences_path = Path(preferences_path) if preferences_path is not None else None
+        self._phoenix_dismissed = False
+        if self._preferences_path is not None:
+            try:
+                saved = json.loads(self._preferences_path.read_text(encoding="utf-8"))
+                self._phoenix_dismissed = isinstance(saved, dict) and saved.get("phoenix_dismissed") is True
+            except (OSError, ValueError):
+                pass  # absent/corrupt preferences must not block an offline tool
         self.flows = install_prompts(flows or load_flows(), self._ask)
         self._prompter = prompter
         self._runner = runner
@@ -300,6 +317,57 @@ class GuiController:
         with self._lock:
             self._note = str(text or "")
         self._emit(("state",))
+
+    def should_show_phoenix(self, outcome):
+        """Offer an optional next step only after successful int-developer setup."""
+        return bool(not self._phoenix_dismissed and outcome is not None and outcome.kind == "result" and
+                    outcome.action == "set-mode-wifi" and
+                    outcome.status in ("verified", "already current") and
+                    outcome.mode == "int-developer")
+
+    def dismiss_phoenix(self):
+        """Suppress future automatic cards, even if local persistence fails."""
+        self._phoenix_dismissed = True
+        path = self._preferences_path
+        if path is None:
+            return
+        temporary = None
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                             dir=path.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                json.dump({"phoenix_dismissed": True}, stream)
+                stream.write("\n")
+            # Match the toolkit's invoking-user ownership under sudo.
+            chown = getattr(self.api, "_chown_to_invoking_user", lambda _path: None)
+            chown(path.parent)
+            chown(temporary)
+            os.replace(temporary, path)
+        except OSError:
+            self.set_note("Phoenix guidance hidden for this session; the local preference could not be saved.")
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass  # a read-only preference directory must not block the GUI
+
+    def open_phoenix_guide(self):
+        """Open only on an explicit click; never fetch or test site availability."""
+        try:
+            opener = self._browser_opener
+            if opener is None:
+                import webbrowser
+                opener = webbrowser.open
+            opened = bool(opener(PHOENIX_GUIDE_URL))
+        except Exception:
+            opened = False
+        if opened:
+            self.dismiss_phoenix()
+        else:
+            self.set_note("Could not open a browser. You can open " + PHOENIX_GUIDE_URL + " yourself.")
+        return opened
 
     # -- events ------------------------------------------------------------
     def _emit(self, event):
@@ -476,7 +544,8 @@ class GuiController:
         status = str(result.get("status", "complete")) if isinstance(result, dict) else ""
         return Outcome("result", key, item.label,
                        tuple(str(line) for line in self.flows._result_summary(key, result)),
-                       status)
+                       status, str(result.get("mode") or result.get("new_mode") or "")
+                       if isinstance(result, dict) else "")
 
     # -- prompts -----------------------------------------------------------
     def _ask(self, prompt):

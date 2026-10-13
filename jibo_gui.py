@@ -40,6 +40,18 @@ MONO_FONTS = ("Cascadia Mono", "Consolas", "SF Mono", "Menlo", "DejaVu Sans Mono
               "Noto Sans Mono", "Liberation Mono", "Ubuntu Mono", "Courier New")
 _ASCII_BAR = re.compile(r"^\[[#\-]+\]\s*")
 _CONFIRM_ARM_MS = 700
+PHOENIX_CARD_TITLE = "Next: connect him to Phoenix"
+PHOENIX_INTRO = "Optional. Phoenix setup happens at jibo.io, not in this toolkit."
+PHOENIX_PREREQUISITE = (
+    "He needs int-developer mode and your Wi-Fi first. "
+    "Use Set mode and configure Wi-Fi here if he isn't set up yet."
+)
+PHOENIX_STEPS = (
+    "1. Restart Jibo normally, out of recovery mode.",
+    "2. Note the IP on his boot screen (or in your router's device list).",
+    "3. At jibo.io, sign in and choose Robots \u2192 Add a Jibo. "
+    "Run the one-line command it gives you; it asks for his IP.",
+)
 _TONES = {
     "info": ("accent_soft", "accent_text"),
     "warning": ("warning_soft", "warning_text"),
@@ -142,6 +154,16 @@ class Theme:
                   background=[("disabled", P["sidebar"]), ("pressed", P["sidebar_line"]),
                               ("active", P["sidebar_hover"])],
                   foreground=[("disabled", P["sidebar_muted"])],
+                  lightcolor=[("active", P["sidebar_hover"])],
+                  darkcolor=[("active", P["sidebar_hover"])])
+        style.configure("SidebarLink.TButton", background=P["sidebar"],
+                        foreground=P["sidebar_muted"], bordercolor=P["sidebar"],
+                        lightcolor=P["sidebar"], darkcolor=P["sidebar"],
+                        padding=(0, 3), font=self.small)
+        style.map("SidebarLink.TButton",
+                  background=[("active", P["sidebar_hover"])],
+                  foreground=[("disabled", P["faint"]), ("active", P["sidebar_text"])],
+                  bordercolor=[("focus", P["sidebar_muted"])],
                   lightcolor=[("active", P["sidebar_hover"])],
                   darkcolor=[("active", P["sidebar_hover"])])
         style.configure("TEntry", fieldbackground=P["surface"], foreground=P["text"],
@@ -520,9 +542,9 @@ class ToolkitWindow:
             tk.Label(footer, text=str(backups), font=theme.small, bg=P["sidebar"],
                      fg=P["sidebar_text"], anchor="w", justify="left",
                      wraplength=240).pack(fill="x", pady=(2, 10))
-        tk.Label(footer, text="The text menu offers the same actions: run.sh without --gui.",
-                 font=theme.small, bg=P["sidebar"], fg=P["sidebar_muted"], anchor="w",
-                 justify="left", wraplength=240).pack(fill="x")
+        self.phoenix_entry = ttk.Button(footer, text="Connect to Phoenix (jibo.io)",
+                                       style="SidebarLink.TButton", command=self.show_phoenix)
+        self.phoenix_entry.pack(anchor="w")
 
         main = tk.Frame(self.root, bg=P["bg"])
         main.grid(row=0, column=1, sticky="nsew")
@@ -648,6 +670,24 @@ class ToolkitWindow:
         self._show("progress", self.progress)
         self.render_output()
 
+    def show_phoenix(self):
+        """User-requested, local guidance; never interrupt a running robot flow."""
+        if self.controller.busy:
+            return
+        self.prompt = None
+        self._stop_progress()
+        page = self._new_page("phoenix")
+        self._header(page, "Bring your Jibo online with Phoenix")
+        buttons = self._button_bar(page)
+        back = ttk.Button(buttons, text="Back to actions", command=self.show_home)
+        back.pack(side="right")
+        area = ScrollArea(page, P["bg"])
+        area.pack(fill="both", expand=True)
+        self._scroll_areas.append(area)
+        self._build_phoenix_card(area.inner, self.show_home, show_prerequisite=True)
+        self.controls["primary"] = back
+        back.focus_set()
+
     # -- main actions ------------------------------------------------------
     def _render_actions(self, snap):
         signature = tuple((item.key, item.label, item.enabled, item.reason)
@@ -689,6 +729,7 @@ class ToolkitWindow:
         self.status_detail.configure(text=snap.detail)
         self.status_port.configure(text=("USB port " + snap.port) if snap.port else "")
         self.refresh_button.state(["disabled"] if snap.busy else ["!disabled"])
+        self.phoenix_entry.state(["disabled"] if snap.busy else ["!disabled"])
         self.note.configure(text=snap.note)
         if self.page_name == "home":
             self._render_actions(snap)
@@ -1025,6 +1066,45 @@ class ToolkitWindow:
         back.focus_set()
         self.controls = {"primary": back, "body": body}
 
+    def _build_phoenix_card(self, parent, on_dismiss, *, show_prerequisite=False):
+        card = tk.Frame(parent, bg=P["surface"], highlightthickness=1,
+                        highlightbackground=P["border"])
+        card.pack(fill="x", pady=(16, 0))
+        body = tk.Frame(card, bg=P["surface"])
+        body.pack(fill="x", padx=18, pady=16)
+        title = tk.Label(body, text=PHOENIX_CARD_TITLE, font=self.theme.heading,
+                         bg=P["surface"], fg=P["text"], anchor="w", justify="left")
+        title.pack(fill="x")
+        _wrapping(title)
+        intro = tk.Label(body, text=PHOENIX_INTRO, font=self.theme.small,
+                         bg=P["surface"], fg=P["muted"], anchor="w", justify="left")
+        intro.pack(fill="x", pady=(4, 8))
+        _wrapping(intro)
+        steps = ((PHOENIX_PREREQUISITE,) if show_prerequisite else ()) + PHOENIX_STEPS
+        for step in steps:
+            label = tk.Label(body, text=step, font=self.theme.base, bg=P["surface"],
+                             fg=P["text"], anchor="w", justify="left")
+            label.pack(fill="x", pady=(4, 0))
+            _wrapping(label)
+        buttons = tk.Frame(body, bg=P["surface"])
+        buttons.pack(fill="x", pady=(14, 0))
+        open_button = ttk.Button(buttons, text="Open jibo.io",
+                                 command=self.controller.open_phoenix_guide)
+        open_button.pack(side="left")
+
+        def dismiss():
+            self.controller.dismiss_phoenix()
+            card.destroy()
+            for key in ("phoenix_card", "phoenix_title", "phoenix_open", "phoenix_dismiss"):
+                self.controls.pop(key, None)
+            on_dismiss()
+
+        not_now = ttk.Button(buttons, text="Not now", command=dismiss)
+        not_now.pack(side="left", padx=(10, 0))
+        self.controls.update(phoenix_card=card, phoenix_title=title,
+                             phoenix_open=open_button, phoenix_dismiss=not_now)
+        return card
+
     # -- results -----------------------------------------------------------
     def show_outcome(self, outcome):
         self._stop_progress()
@@ -1043,7 +1123,10 @@ class ToolkitWindow:
                  padx=10, pady=3).pack(anchor="w", pady=(0, 10))
         self._header(page, display_label(outcome.title) or "Finished")
         buttons = self._button_bar(page)
-        summary = tk.Frame(page, bg=P["surface"], highlightthickness=1,
+        area = ScrollArea(page, P["bg"])
+        area.pack(fill="both", expand=True)
+        self._scroll_areas.append(area)
+        summary = tk.Frame(area.inner, bg=P["surface"], highlightthickness=1,
                            highlightbackground=P["border"])
         summary.pack(fill="x", pady=(16, 0))
         stripe = tk.Frame(summary, bg=P[{"danger": "danger", "neutral": "border_strong",
@@ -1057,12 +1140,14 @@ class ToolkitWindow:
                              justify="left")
             label.pack(fill="x", pady=(0 if index == 0 else 4, 0))
             _wrapping(label)
+        if self.controller.should_show_phoenix(outcome):
+            self._build_phoenix_card(area.inner, lambda: None)
         log_lines = self.controller.output_state().lines
         log = None
         if log_lines:
-            log = TextBox(page, self.theme, font=self.theme.mono, height=8)
+            log = TextBox(area.inner, self.theme, font=self.theme.mono, height=8)
             log.set("\n".join(log_lines), see_end=True)
-            toggle = ttk.Button(page, text="Show operation log", style="Link.TButton")
+            toggle = ttk.Button(area.inner, text="Show operation log", style="Link.TButton")
 
             def flip():
                 if log.winfo_ismapped():
@@ -1178,7 +1263,7 @@ def create_root():
 def main(api):
     """Open the window for the real device layer and run until it closes."""
     root = create_root()
-    controller = core.GuiController(api)
+    controller = core.GuiController(api, preferences_path=api.BACKUP_ROOT / ".phoenix-guidance.json")
     ToolkitWindow(root, controller)
     with core.capture_output(controller):
         root.mainloop()

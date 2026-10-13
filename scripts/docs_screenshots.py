@@ -98,6 +98,8 @@ def clean_png(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "docs/images/gui")
+    parser.add_argument("--phoenix", action="store_true",
+                        help="Also capture the quiet entry, local guide and successful setup card")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -106,7 +108,8 @@ def main():
     import jibo_gui_core as core
 
     api = DocsApi()
-    controller = core.GuiController(api)
+    opened = []
+    controller = core.GuiController(api, browser_opener=lambda url: opened.append(url) or True)
     root = gui.create_root()
     errors = []
     root.report_callback_exception = lambda *exc: errors.append(
@@ -163,6 +166,13 @@ def main():
             assert controller.snapshot().readiness.state == "dfu-ready"
             window.render_state()
             capture("ready")
+            if args.phoenix:
+                assert window.phoenix_entry.winfo_viewable()
+                capture("phoenix-entry")
+                window.phoenix_entry.invoke()
+                pump_until(lambda: window.page_name == "phoenix")
+                capture("phoenix-guidance")
+                window.controls["primary"].invoke()  # keep automatic completion card enabled
 
             window.open_action("set-mode-wifi")
             pump_until(lambda: window.prompt is not None)
@@ -178,9 +188,14 @@ def main():
             assert root.focus_get() is window.controls["cancel"]
             pump_until(lambda: not window.controls["primary"].instate(["disabled"]))
             capture("review")
-            window.controls["cancel"].invoke()
+            window.controls["primary" if args.phoenix else "cancel"].invoke()
             pump_until(lambda: not controller.busy and window.page_name == "result")
-            assert not api.writes
+            if args.phoenix:
+                assert api.writes == ["set_mode_wifi_live"]
+                assert window.controls["phoenix_card"].winfo_viewable()
+                capture("phoenix-complete")
+            else:
+                assert not api.writes
 
             window.show_home()
             window.open_action("backup-var")
@@ -194,11 +209,14 @@ def main():
         if not window.closed:
             window.close()
 
-    assert [path.name for path in captured] == [
-        "ready.png", "mode-wifi.png", "review.png", "progress.png"]
+    expected = (["ready.png", "phoenix-entry.png", "phoenix-guidance.png", "mode-wifi.png",
+                 "review.png", "phoenix-complete.png", "progress.png"] if args.phoenix else
+                ["ready.png", "mode-wifi.png", "review.png", "progress.png"])
+    assert [path.name for path in captured] == expected
+    assert not opened, "Screenshot capture must never open a browser"
     for path in captured:
         print(str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path))
-    print("4 screens captured at 1080 x 720; PNG metadata removed; no Tk callback errors")
+    print(f"{len(captured)} screens captured at 1080 x 720; PNG metadata removed; no Tk callback errors")
     return 0
 
 

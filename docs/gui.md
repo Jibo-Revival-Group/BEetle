@@ -51,10 +51,12 @@ setup, not permission to flash a robot: device writes have a separate review.
 ## Screens and operations
 
 The [README gallery](../README.md#gui-screenshots) shows the ready, mode/Wi-Fi,
-write review and backup progress screens.
+write review and backup progress screens. The optional
+[Phoenix connection path](phoenix-nudge.md) has companion screenshots and its
+exact wording documented separately.
 
 The sidebar continuously checks the USB connection while idle. Its four-item
-**USB FLOW** is the only numbered sequence; the state card is labelled
+**USB FLOW** is the only numbered USB sequence; the state card is labelled
 **USB READINESS** rather than repeating the TUI's separate three-step count.
 RCM/APX and DFU are distinct; partition operations require the toolkit loader
 marker and `var` alternate. Multiple robots, missing/incomplete loader, access

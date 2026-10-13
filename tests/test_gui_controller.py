@@ -95,6 +95,172 @@ def test_non_developer_has_no_boot_status_prompt(mode):
     assert not any(p.title == "Boot screen network status" for p in prompts)
 
 
+@pytest.mark.parametrize("mode", ["developer", "int-developer", "normal", "oobe"])
+@pytest.mark.parametrize("boot", ["install", "keep", "remove"])
+def test_phoenix_card_only_follows_successful_combined_int_developer_setup(mode, boot):
+    answers = [mode, "Test network", "open"]
+    if mode in ("developer", "int-developer"):
+        answers.append(boot)
+    c, _ = controller(answers=(*answers, "confirm"))
+    c.start_action("set-mode-wifi")
+    result = outcome(c)
+    assert result.status == "verified" and result.mode == mode
+    assert c.should_show_phoenix(result) == (mode == "int-developer")
+
+
+@pytest.mark.parametrize("boot", ["install", "keep", "remove"])
+def test_phoenix_card_never_follows_successful_developer_mode_setup(boot):
+    # The jibo.io command needs SSH, which the developer-mode firewall rejects.
+    api = FakeApi()
+    c, _ = controller(api, ("developer", "Test network", "open", boot, "confirm"))
+    c.start_action("set-mode-wifi")
+    result = outcome(c)
+    assert api.writes and result.kind == "result" and result.action == "set-mode-wifi"
+    assert result.status == "verified" and result.mode == "developer"
+    assert not c.should_show_phoenix(result)
+
+
+@pytest.mark.parametrize("status", ["verified", "already current"])
+@pytest.mark.parametrize("mode,shown", [
+    ("int-developer", True),
+    ("developer", False),
+    ("normal", False),
+    ("oobe", False),
+    ("", False),
+    ("INT-DEVELOPER", False),
+    ("int-developer ", False),
+])
+def test_phoenix_card_requires_exact_int_developer_mode(status, mode, shown):
+    c = core.GuiController(FakeApi())
+    assert c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), status, mode)) is shown
+
+
+def test_phoenix_dismissal_is_remembered_locally_without_touching_robot(tmp_path):
+    prefs = tmp_path / "preferences.json"
+    result = core.Outcome("result", "set-mode-wifi", "Setup", (), "verified", "int-developer")
+    c = core.GuiController(FakeApi(), preferences_path=prefs)
+    assert c.should_show_phoenix(result)
+    assert not prefs.exists()  # no first-launch write
+    c.dismiss_phoenix()
+    assert not c.should_show_phoenix(result)
+    assert json.loads(prefs.read_text()) == {"phoenix_dismissed": True}
+    fresh = core.GuiController(FakeApi(), preferences_path=prefs)
+    assert not fresh.should_show_phoenix(result)
+    assert not c.api.calls and not fresh.api.calls
+
+
+def test_phoenix_browser_opener_is_explicit_injectable_and_remembers_engagement(tmp_path):
+    opened = []
+    prefs = tmp_path / "preferences.json"
+    def open_browser(url):
+        opened.append(url)
+        return True
+    c = core.GuiController(FakeApi(), preferences_path=prefs, browser_opener=open_browser)
+    result = core.Outcome("result", "set-mode-wifi", "Setup", (), "verified", "int-developer")
+    assert c.should_show_phoenix(result) and not opened
+    assert c.open_phoenix_guide()
+    assert opened == ["https://jibo.io/guide"]
+    assert not c.should_show_phoenix(result)
+    assert c.open_phoenix_guide()  # explicit entry still works after dismissal
+    assert opened == ["https://jibo.io/guide"] * 2
+    assert not c.api.calls
+
+
+@pytest.mark.parametrize("status", ["failed", "readback mismatch", "cancelled", "complete", ""])
+def test_phoenix_card_rejects_unverified_results(status):
+    c, _ = controller()
+    assert not c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), status, "int-developer"))
+
+
+def test_phoenix_card_uses_full_var_new_mode_result():
+    api = FakeApi()
+    original = api.set_mode_wifi_live
+    def full_var(*args, **kwargs):
+        result = original(*args, **kwargs)
+        result["new_mode"] = result.pop("mode")
+        return result
+    api.set_mode_wifi_live = full_var
+    c, _ = controller(api, ("int-developer", "Test network", "open", "install", "confirm"))
+    c.start_action("set-mode-wifi")
+    assert c.should_show_phoenix(outcome(c))
+
+
+def test_phoenix_card_never_follows_failed_combined_write():
+    api = FakeApi()
+    api.fail = RuntimeError("Readback mismatch")
+    c, _ = controller(api, ("int-developer", "Test network", "open", "install", "confirm"))
+    c.start_action("set-mode-wifi")
+    result = outcome(c)
+    assert result.kind == "error" and not c.should_show_phoenix(result)
+
+
+@pytest.mark.parametrize("action,answers", [
+    ("set-mode", ("int-developer", "confirm")),
+    ("configure-wifi", ("Test network", "open", "confirm")),
+])
+def test_phoenix_card_does_not_follow_separate_edits(action, answers):
+    c, _ = controller(answers=answers)
+    c.start_action(action)
+    assert not c.should_show_phoenix(outcome(c))
+
+
+@pytest.mark.parametrize("saved", ["bad json", "null", "[]", '{"phoenix_dismissed": "true"}'])
+def test_bad_phoenix_preferences_do_not_break_offline_controller(tmp_path, saved):
+    prefs = tmp_path / "prefs.json"
+    prefs.write_text(saved)
+    c = core.GuiController(FakeApi(), preferences_path=prefs)
+    assert c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), "verified", "int-developer"))
+
+
+def test_phoenix_preference_write_failure_still_dismisses_for_session(tmp_path):
+    parent = tmp_path / "not-a-directory"
+    parent.write_text("existing file")
+    c = core.GuiController(FakeApi(), preferences_path=parent / "prefs.json")
+    c.dismiss_phoenix()
+    assert not c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), "verified", "int-developer"))
+    assert "could not be saved" in c.snapshot().note
+
+
+def test_phoenix_failed_atomic_write_and_cleanup_never_block_dismissal(tmp_path, monkeypatch):
+    def unavailable(*_args, **_kwargs):
+        raise OSError("Read-only preferences directory")
+    c = core.GuiController(FakeApi(), preferences_path=tmp_path / "prefs.json")
+    monkeypatch.setattr(core.os, "replace", unavailable)
+    monkeypatch.setattr(Path, "unlink", unavailable)
+    c.dismiss_phoenix()
+    assert not c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), "verified", "int-developer"))
+    assert "could not be saved" in c.snapshot().note
+
+
+def test_phoenix_default_opener_does_nothing_until_explicit_open():
+    with patch("webbrowser.open", return_value=True) as opener:
+        c, _ = controller(answers=("int-developer", "Test network", "open", "install", "confirm"))
+        c.start_action("set-mode-wifi")
+        assert c.should_show_phoenix(outcome(c))
+        assert not opener.called
+        assert c.open_phoenix_guide()
+        opener.assert_called_once_with("https://jibo.io/guide")
+
+
+@pytest.mark.parametrize("raises", [False, True])
+def test_phoenix_browser_failure_is_nonblocking_and_keeps_guidance(raises):
+    def opener(_url):
+        if raises:
+            raise OSError("No desktop browser")
+        return False
+    c = core.GuiController(FakeApi(), browser_opener=opener)
+    assert not c.open_phoenix_guide()
+    assert "https://jibo.io/guide" in c.snapshot().note
+    assert c.should_show_phoenix(core.Outcome(
+        "result", "set-mode-wifi", "Setup", (), "verified", "int-developer"))
+    assert not c.api.calls
+
+
 @pytest.mark.parametrize("action,answers", [
     ("configure-wifi", ("Test network", "protected", "testpass1", "different", "cancel")),
     ("set-mode-wifi", ("developer", "Test network", "protected", "testpass1", "different", "cancel")),
@@ -109,14 +275,17 @@ def test_mismatched_password_cancel_never_calls_device_edit(action, answers):
     assert "testpass1" not in repr(prompts)
 
 
+@pytest.mark.parametrize("mode", ["developer", "int-developer"])
 @pytest.mark.parametrize("stop", range(7))
-def test_combined_flow_cancellation_at_every_prompt_never_writes(stop):
+def test_combined_flow_cancellation_at_every_prompt_never_writes(stop, mode):
     api = FakeApi()
-    answers = ["developer", "Test network", "protected", "testpass1", "testpass1", "install", "confirm"]
+    answers = [mode, "Test network", "protected", "testpass1", "testpass1", "install", "confirm"]
     answers[stop] = None
     c, prompts = controller(api, answers[:stop + 1])
     c.start_action("set-mode-wifi")
-    assert outcome(c).status == "cancelled" and not api.writes
+    result = outcome(c)
+    assert result.status == "cancelled" and not api.writes
+    assert not c.should_show_phoenix(result)
     assert len(prompts) == stop + 1
 
 
