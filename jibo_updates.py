@@ -435,8 +435,12 @@ def _restore_ext4_write_time(source: Path, output: Path) -> None:
     Jibo's stock images have no metadata_csum feature. Their primary and backup
     superblocks receive a new s_wtime on every resize, making otherwise equal
     partition images hash differently across flash attempts. Preserve the
-    source image's timestamp in each real superblock. Other ext4 layouts are
-    left to their filesystem tools, which know how to update their checksums.
+    source image's timestamp in each real superblock, and the timestamps of
+    inode 7 when resize_inode is enabled: resize2fs rebuilds that inode and
+    stamps its atime, mtime and (for large inodes) crtime too. Restore only
+    timestamp fields, not the inode's updated block pointers or allocation.
+    Other ext4 layouts are left to their filesystem tools, which know how to
+    update their checksums.
     """
     with source.open("rb") as original, output.open("r+b") as prepared:
         original.seek(1024)
@@ -471,6 +475,37 @@ def _restore_ext4_write_time(source: Path, output: Path) -> None:
                 raise UpdateError("An ext4 backup superblock has the wrong group number.")
             prepared.seek(offset + 48)
             prepared.write(old[48:52])
+        if struct.unpack_from("<I", old, 92)[0] & \
+                struct.unpack_from("<I", new, 92)[0] & 0x10:  # resize_inode
+            inodes = []
+            for stream, header in ((original, old), (prepared, new)):
+                inode_size = (struct.unpack_from("<H", header, 88)[0]
+                              if struct.unpack_from("<I", header, 76)[0] else 128)
+                if inode_size < 128 or inode_size > block_size or inode_size & (inode_size - 1):
+                    raise UpdateError("The ext4 resize inode size is invalid.")
+                # Inode 7 is in group zero. Its inode table can move during
+                # growth, so resolve it independently in each image's GDT.
+                stream.seek(2048)
+                descriptor = stream.read(64)
+                table = struct.unpack_from("<I", descriptor, 8)[0]
+                if struct.unpack_from("<I", header, 96)[0] & 0x80:  # 64bit
+                    table |= struct.unpack_from("<I", descriptor, 40)[0] << 32
+                position = table * block_size + 6 * inode_size
+                if not table or position + inode_size > os.fstat(stream.fileno()).st_size:
+                    raise UpdateError("The ext4 resize inode extends beyond the image.")
+                stream.seek(position)
+                inode = stream.read(inode_size)
+                extra_size = struct.unpack_from("<H", inode, 128)[0] if inode_size > 128 else 0
+                inodes.append((position, inode, 128 + extra_size))
+            _, before, before_end = inodes[0]
+            position, after, after_end = inodes[1]
+            # Low atime/ctime/mtime, then their optional epoch/nanosecond
+            # extensions and crtime. Never restore adjacent non-time bytes.
+            for start, end in ((8, 20), (132, 136), (136, 140), (140, 144),
+                               (144, 148), (148, 152)):
+                if end <= min(len(before), len(after), before_end, after_end):
+                    prepared.seek(position + start)
+                    prepared.write(before[start:end])
         prepared.flush()
         os.fsync(prepared.fileno())
 

@@ -906,17 +906,28 @@ class UpdatePackageTests(unittest.TestCase):
             source = root / "source.ext4"
             with source.open("wb") as stream:
                 stream.truncate(4 * 1024 * 1024)
-            subprocess.run(["mke2fs", "-F", "-q", "-t", "ext4", "-b", "1024",
-                            "-O", "^metadata_csum", str(source)], check=True, capture_output=True)
+            subprocess.run(["mke2fs", "-F", "-q", "-t", "ext4", "-b", "1024", "-I", "256",
+                            "-O", "resize_inode,^metadata_csum", str(source)],
+                           check=True, capture_output=True)
+            source_bytes = source.read_bytes()
+            # Group-zero inode table, then the seventh 256-byte inode.
+            inode7 = struct.unpack_from("<I", source_bytes, 2048 + 8)[0] * 1024 + 6 * 256
             copies = [root / "first.ext4", root / "second.ext4"]
-            for copy in copies:
+            # Exercise different e2fsprogs clock ticks without sleeping or
+            # depending on how quickly a particular CI runner can resize.
+            for copy, timestamp in zip(copies, (1_600_000_000, 1_700_000_000)):
                 shutil.copyfile(source, copy)
                 with copy.open("r+b") as stream:
                     stream.truncate(16 * 1024 * 1024)
-                subprocess.run(["resize2fs", "-f", str(copy), "16384"],
-                               check=True, capture_output=True)
+                with patch.dict("os.environ", {"E2FSPROGS_FAKE_TIME": str(timestamp)}):
+                    subprocess.run(["resize2fs", "-f", str(copy), "16384"],
+                                   check=True, capture_output=True)
                 with copy.open("r+b") as stream:
                     stream.truncate(16 * 1024 * 1024)
+                # Validate the clock injection itself, not just a hash that
+                # could pass by chance if both resizes used wall-clock time.
+                self.assertEqual(struct.unpack_from("<I", copy.read_bytes(), inode7 + 8)[0],
+                                 timestamp)
             with copies[1].open("r+b") as stream:
                 for position in (1072, 8 * 1024 * 1024 + 1072):
                     stream.seek(position)
@@ -928,14 +939,63 @@ class UpdatePackageTests(unittest.TestCase):
                 self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
             self.assertEqual(hashlib.sha256(copies[0].read_bytes()).hexdigest(),
                              hashlib.sha256(copies[1].read_bytes()).hexdigest())
+            self.assertEqual(source.read_bytes(), source_bytes)
+            for start, end in ((8, 20), (132, 152)):
+                self.assertEqual(copies[0].read_bytes()[inode7 + start:inode7 + end],
+                                 source_bytes[inode7 + start:inode7 + end])
             with copies[1].open("r+b") as stream:
                 stream.seek(1072)
                 stream.write(b"\x05\x06\x07\x08")
             self.assertTrue(updates.equivalent_except_ext4_write_time(copies[0], copies[1]))
-            with copies[1].open("r+b") as stream:
-                stream.seek(4096)
-                stream.write(b"\xff")
-            self.assertFalse(updates.equivalent_except_ext4_write_time(copies[0], copies[1]))
+            timestamp_only = copies[1].read_bytes()
+            # Each mutant starts with only the allowed superblock difference.
+            # Adjacent inode fields and even inode timestamps remain outside
+            # the equivalence allowance; reproducibility must fix the writer.
+            for position in (4096, inode7 + 20, inode7 + 152, inode7 + 8):
+                with self.subTest(mutant_offset=position):
+                    copies[1].write_bytes(timestamp_only)
+                    with copies[1].open("r+b") as stream:
+                        stream.seek(position)
+                        stream.write(b"\xff" if position == 4096 else
+                                     bytes([timestamp_only[position] ^ 0xff]))
+                    self.assertFalse(updates.equivalent_except_ext4_write_time(copies[0], copies[1]))
+
+    @unittest.skipUnless(all(shutil.which(name) for name in ("mke2fs", "resize2fs", "e2fsck", "dumpe2fs")),
+                         "e2fsprogs is required for reproducible update preparation")
+    def test_prepare_classic_ext4_is_reproducible_with_and_without_resize_inode(self):
+        # Cover 128-byte legacy inodes as well as the large-inode regression
+        # above. Real stock images do not have the resize_inode feature.
+        for resize_feature in ("resize_inode", "^resize_inode"):
+            with self.subTest(feature=resize_feature), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                images_dir = root / "release" / "flash_jibo" / "output" / "images"
+                images_dir.mkdir(parents=True)
+                source = images_dir / "rootfs.ext4"
+                with source.open("wb") as stream:
+                    stream.truncate(4 * 1024 * 1024)
+                with patch.dict("os.environ", {"E2FSPROGS_FAKE_TIME": "1500000000"}):
+                    subprocess.run(["mke2fs", "-F", "-q", "-t", "ext4", "-b", "1024",
+                                    "-I", "128", "-O", resize_feature + ",^metadata_csum,^64bit",
+                                    str(source)], check=True, capture_output=True)
+                for filename in updates.IMAGE_NAMES:
+                    if filename != source.name:
+                        shutil.copyfile(source, images_dir / filename)
+                source_hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                 for p in images_dir.iterdir()}
+                package = updates.validate_package(root)
+                capacities = {name: 16 * 1024 * 1024 for name in
+                              ("rootfsA", "rootfsB", "services", "var", "skills")}
+                prepared = []
+                for timestamp in (1_600_000_000, 1_700_000_000):
+                    with patch.dict(updates.KNOWN_CAPACITIES, capacities, clear=True), \
+                            patch.dict("os.environ", {"E2FSPROGS_FAKE_TIME": str(timestamp)}):
+                        prepared.append(updates.prepare_images(
+                            package, False, capacities, root / str(timestamp)))
+                for name in capacities:
+                    self.assertEqual(hashlib.sha256(prepared[0][name].read_bytes()).hexdigest(),
+                                     hashlib.sha256(prepared[1][name].read_bytes()).hexdigest(), name)
+                self.assertEqual(source_hashes, {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                                 for p in images_dir.iterdir()})
 
 
 class CompactFlashIntegrationTests(unittest.TestCase):
