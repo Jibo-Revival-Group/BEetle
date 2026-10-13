@@ -129,12 +129,14 @@ If you already use another Python 3.10+ version, install its matching `python-tk
 
 The launcher does not install packages itself: it checks the tools above before opening the interface and prints the exact install command if one is missing. Installing Homebrew also installs the Xcode Command Line Tools (`cc`, `make`, `git`) that the first launch uses to build the ShofEL entry helper from the pinned in-repo payloads, so no ARM cross-compiler is needed. That helper is downloaded, built once on the first launch (internet required), and reused afterwards. No `sudo` is needed on a Mac, and backups are saved under the invoking owner's `~/Jibo-Backups`. On Apple silicon, open a native Terminal session with Rosetta disabled.
 
-For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php) and point the launcher at its prefix:
+For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php). Without Homebrew the launcher finds MacPorts in `/opt/local` on its own, so `Jibo DFU Toolkit.command` works by double-click:
 
 ```sh
-sudo port install python312 py312-tkinter dfu-util libusb e2fsprogs
-JIBO_PYTHON=/opt/local/bin/python3.12 JIBO_MAC_PREFIX=/opt/local ./run.sh --gui
+sudo port install python312 py312-tkinter tk dfu-util libusb e2fsprogs
+./run.sh --gui
 ```
+
+Install the `tk` port as well as `py312-tkinter`: without it the window fails with "Can't find a usable tk.tcl". The downloadable Mac app needs macOS 15 or later; on older macOS use this source version.
 
 See [macOS setup and verification](docs/macos.md) for architecture notes, tool selection, `JIBO_*` overrides, and the current hardware-verification results.
 

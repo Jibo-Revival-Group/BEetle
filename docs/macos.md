@@ -33,17 +33,26 @@ installer matching your installed OS, then install the tools:
 
 ```sh
 xcode-select --install
-sudo port install python312 dfu-util libusb e2fsprogs
-JIBO_MAC_PREFIX=/opt/local ./run.sh
+sudo port install python312 py312-tkinter tk dfu-util libusb e2fsprogs
+./run.sh --gui
 ```
 
-The launcher recognizes MacPorts at `/opt/local` and its versioned
-`python3.12` executable, so selecting a system-wide Python default is unnecessary.
+The launcher uses MacPorts at `/opt/local` when Homebrew is not installed (set
+`JIBO_MAC_PREFIX=/opt/local` if both are), and finds its versioned `python3.12`
+executable, so selecting a system-wide Python default is unnecessary. The GUI
+needs both `py312-tkinter` and the `tk` port: `py312-tkinter` alone leaves Tk's
+script library out of Tk's search path, and the window then fails with "Can't
+find a usable tk.tcl". On an Intel Mac running Catalina 10.15.8, this set
+installed and the toolkit window opened.
 MacPorts lists [Python 3.12](https://ports.macports.org/port/python312/),
 [dfu-util](https://ports.macports.org/port/dfu-util/),
 [libusb](https://ports.macports.org/port/libusb/), and
 [e2fsprogs](https://ports.macports.org/port/e2fsprogs/) as separate ports.
 Availability and build results vary with the installed OS.
+
+The downloadable Mac app (DMG) is built on macOS 15 and needs macOS 15 or later.
+On older macOS it stops at launch with "Symbol not found: _mkfifoat"; use the
+source version above instead.
 
 For Macs with a working [Homebrew installation](https://docs.brew.sh/Installation):
 

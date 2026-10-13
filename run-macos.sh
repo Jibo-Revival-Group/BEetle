@@ -29,7 +29,7 @@ if [[ -z $prefix ]]; then
     prefix=/opt/local
   fi
 fi
-install_hint='Install dependencies with Homebrew: brew install python dfu-util libusb e2fsprogs; or with MacPorts: sudo port install python312 dfu-util libusb e2fsprogs. See docs/macos.md.'
+install_hint='Install dependencies with Homebrew: brew install python dfu-util libusb e2fsprogs; or with MacPorts: sudo port install python312 py312-tkinter tk dfu-util libusb e2fsprogs. See docs/macos.md.'
 export PATH="$prefix/opt/e2fsprogs/sbin:$prefix/opt/e2fsprogs/bin:$prefix/bin:$prefix/sbin:$PATH"
 if [[ -z ${JIBO_LIBUSB:-} ]]; then
   for library in "$prefix/opt/libusb/lib/libusb-1.0.dylib" "$prefix/lib/libusb-1.0.dylib"; do
@@ -97,7 +97,7 @@ fi
 
 if [[ ${1:-} == gui ]] && ! "$python" -c 'import tkinter' >/dev/null 2>&1; then
   tk_version=$("$python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')
-  say "GUI support is missing. For Homebrew: brew install python-tk@$tk_version. For MacPorts install the matching pyXY-tkinter port. The app will offer the text menu."
+  say "GUI support is missing. For Homebrew: brew install python-tk@$tk_version. For MacPorts install the matching pyXY-tkinter port and the tk port. The app will offer the text menu."
 fi
 
 say 'Experimental macOS workflow: RCM-to-DFU entry is available and unverified on Mac hardware. Partition actions need the Jibo DFU loader it starts.'
