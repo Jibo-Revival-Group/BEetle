@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Capture the README's four Tk screens using docs-only example data, never USB.
 
-Run with Tk, Pillow and ImageMagick under Xvfb:
+Run with Tk and Pillow under Xvfb:
     xvfb-run -a -s '-screen 0 1400x1000x24' python3 scripts/docs_screenshots.py
 """
 import argparse
 import hashlib
+import os
 from pathlib import Path
 import re
 import struct
@@ -98,8 +99,8 @@ def clean_png(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=ROOT / "docs/images/gui")
-    parser.add_argument("--phoenix", action="store_true",
-                        help="Also capture the quiet entry, local guide and successful setup card")
+    parser.add_argument("--setup", action="store_true",
+                        help="Also capture the shared 5x1 setup review")
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -143,8 +144,10 @@ def main():
         assert root.winfo_viewable() and not errors
         assert not re.search(r"\bfake\b|\btest(?:ing)?\b|/tmp", visible_text(root), re.I)
         path = out / (name + ".png")
-        subprocess.run(["import", "-window", str(root.winfo_id()), str(path)],
-                       check=True, timeout=10)
+        from PIL import ImageGrab
+        x, y = root.winfo_rootx(), root.winfo_rooty()
+        ImageGrab.grab(bbox=(x, y, x + root.winfo_width(), y + root.winfo_height()),
+                       xdisplay=os.environ.get("DISPLAY")).save(path)
         clean_png(path)
         captured.append(path)
 
@@ -166,13 +169,13 @@ def main():
             assert controller.snapshot().readiness.state == "dfu-ready"
             window.render_state()
             capture("ready")
-            if args.phoenix:
-                assert window.phoenix_entry.winfo_viewable()
-                capture("phoenix-entry")
-                window.phoenix_entry.invoke()
-                pump_until(lambda: window.page_name == "phoenix")
-                capture("phoenix-guidance")
-                window.controls["primary"].invoke()  # keep automatic completion card enabled
+            if args.setup:
+                assert window.setup_entry.winfo_viewable()
+                window.show_prompt(core.Prompt("confirm", "Prepare 5x1 setup",
+                    detail="Back up var, both rootfs slots, services and skills. Then configure developer mode and Wi-Fi, install BEam/BEnch, provision missing credentials, update body firmware and finish in normal mode. Keep power connected.",
+                    items=(controller.flows.MenuItem("cancel", "Cancel"), controller.flows.MenuItem("confirm", "Confirm")), initial="cancel"))
+                capture("setup")
+                window.show_home()
 
             window.open_action("set-mode-wifi")
             pump_until(lambda: window.prompt is not None)
@@ -188,15 +191,8 @@ def main():
             assert root.focus_get() is window.controls["cancel"]
             pump_until(lambda: not window.controls["primary"].instate(["disabled"]))
             capture("review")
-            window.controls["primary" if args.phoenix else "cancel"].invoke()
+            window.controls["cancel"].invoke()
             pump_until(lambda: not controller.busy and window.page_name == "result")
-            if args.phoenix:
-                assert api.writes == ["set_mode_wifi_live"]
-                assert window.controls["phoenix_card"].winfo_viewable()
-                capture("phoenix-complete")
-            else:
-                assert not api.writes
-
             window.show_home()
             window.open_action("backup-var")
             pump_until(lambda: float(window.progress_bar.cget("value")) == 50)
@@ -209,9 +205,9 @@ def main():
         if not window.closed:
             window.close()
 
-    expected = (["ready.png", "phoenix-entry.png", "phoenix-guidance.png", "mode-wifi.png",
-                 "review.png", "phoenix-complete.png", "progress.png"] if args.phoenix else
-                ["ready.png", "mode-wifi.png", "review.png", "progress.png"])
+    expected = ["ready.png", "mode-wifi.png", "review.png", "progress.png"]
+    if args.setup:
+        expected.insert(1, "setup.png")
     assert [path.name for path in captured] == expected
     assert not opened, "Screenshot capture must never open a browser"
     for path in captured:

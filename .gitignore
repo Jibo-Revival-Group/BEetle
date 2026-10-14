@@ -28,3 +28,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 .pytest_cache/
+
+# Local setup records and dependencies
+beetle-5x1-session*.json
+.setup-deps/

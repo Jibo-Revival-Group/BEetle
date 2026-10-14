@@ -1,4 +1,4 @@
-"""Graphical window for the Jibo DFU Mod Toolkit (tkinter/ttk, standard library only).
+"""Graphical window for the BEetle — 5x1 Setup Toolkit (tkinter/ttk, standard library only).
 
 The window is only a view. ``jibo_gui_core.GuiController`` runs the text
 menu's own flows (``jibo_tui.execute_action``) and hands each question to
@@ -9,6 +9,7 @@ imports it lazily and reports a missing Tk with a pointer to the text menu.
 """
 
 import re
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import tkinter.font as tkfont
@@ -21,18 +22,18 @@ class DisplayUnavailable(RuntimeError):
 
 
 P = {
-    "bg": "#eef1f5", "surface": "#ffffff", "border": "#d7dde5", "border_strong": "#c3ccd7",
-    "text": "#17202b", "muted": "#566273", "faint": "#8893a1", "disabled": "#a0aab6",
-    "hover": "#f5f8fc", "pressed": "#e3e9f1", "trough": "#dfe5ec",
-    "accent": "#2563c9", "accent_active": "#1c4fa6", "accent_disabled": "#a8bde3",
-    "accent_soft": "#e8effc", "accent_text": "#1d4ea3",
-    "danger": "#c4302b", "danger_active": "#a2231f", "danger_disabled": "#e3a8a5",
-    "danger_soft": "#fcebea", "danger_text": "#a2231f",
-    "warning": "#b45309", "warning_soft": "#fdf3e1", "warning_text": "#8a3f06",
-    "success": "#17804f", "success_soft": "#e4f5ec", "success_text": "#11663e",
-    "neutral_soft": "#eceff3",
-    "sidebar": "#141c26", "sidebar_card": "#1c2632", "sidebar_line": "#2f3b49",
-    "sidebar_text": "#eef2f6", "sidebar_muted": "#97a5b6", "sidebar_hover": "#253140",
+    "bg": "#111513", "surface": "#161c18", "border": "#303b33", "border_strong": "#425749",
+    "text": "#eef1ec", "muted": "#b0bbb2", "faint": "#8aa492", "disabled": "#6b8071",
+    "hover": "#203327", "pressed": "#283e2f", "trough": "#25372b",
+    "accent": "#29d780", "accent_active": "#66e7a6", "accent_disabled": "#326b4b",
+    "accent_soft": "#203b2b", "accent_text": "#66e7a6",
+    "danger": "#c4302b", "danger_active": "#ff8a83", "danger_disabled": "#e3a8a5",
+    "danger_soft": "#3e2424", "danger_text": "#ff8a83",
+    "warning": "#b45309", "warning_soft": "#3b321d", "warning_text": "#ffd087",
+    "success": "#17804f", "success_soft": "#203b2b", "success_text": "#66e7a6",
+    "neutral_soft": "#243129",
+    "sidebar": "#0d120f", "sidebar_card": "#161c18", "sidebar_line": "#303b33",
+    "sidebar_text": "#eef1ec", "sidebar_muted": "#b0bbb2", "sidebar_hover": "#203327",
 }
 UI_FONTS = ("Segoe UI", "Inter", "Cantarell", "Ubuntu", "Noto Sans", "DejaVu Sans",
             "Liberation Sans", "Helvetica Neue", "Arial", "Helvetica")
@@ -40,18 +41,6 @@ MONO_FONTS = ("Cascadia Mono", "Consolas", "SF Mono", "Menlo", "DejaVu Sans Mono
               "Noto Sans Mono", "Liberation Mono", "Ubuntu Mono", "Courier New")
 _ASCII_BAR = re.compile(r"^\[[#\-]+\]\s*")
 _CONFIRM_ARM_MS = 700
-PHOENIX_CARD_TITLE = "Next: connect him to Phoenix"
-PHOENIX_INTRO = "Optional. Phoenix setup happens at jibo.io, not in this toolkit."
-PHOENIX_PREREQUISITE = (
-    "He needs int-developer mode and your Wi-Fi first. "
-    "Use Set mode and configure Wi-Fi here if he isn't set up yet."
-)
-PHOENIX_STEPS = (
-    "1. Restart Jibo normally, out of recovery mode.",
-    "2. Note the IP on his boot screen (or in your router's device list).",
-    "3. At jibo.io, sign in and choose Robots \u2192 Add a Jibo. "
-    "Run the one-line command it gives you; it asks for his IP.",
-)
 _TONES = {
     "info": ("accent_soft", "accent_text"),
     "warning": ("warning_soft", "warning_text"),
@@ -113,7 +102,7 @@ class Theme:
         style.configure(".", background=P["bg"], foreground=P["text"], font=self.base,
                         bordercolor=P["border"], lightcolor=P["bg"], darkcolor=P["bg"],
                         troughcolor=P["trough"], focuscolor=P["accent"],
-                        selectbackground=P["accent"], selectforeground="#ffffff",
+                        selectbackground=P["accent"], selectforeground="#161c18",
                         insertcolor=P["text"])
         style.configure("TButton", background=P["surface"], foreground=P["text"],
                         bordercolor=P["border_strong"], lightcolor=P["surface"],
@@ -129,12 +118,12 @@ class Theme:
         for name in ("accent", "danger"):
             color, active, disabled = P[name], P[name + "_active"], P[name + "_disabled"]
             style_name = name.capitalize() + ".TButton"
-            style.configure(style_name, background=color, foreground="#ffffff",
+            style.configure(style_name, background=color, foreground="#161c18",
                             bordercolor=color, lightcolor=color, darkcolor=color,
-                            font=self.bold, focuscolor="#ffffff")
+                            font=self.bold, focuscolor="#161c18")
             style.map(style_name,
                       background=[("disabled", disabled), ("pressed", active), ("active", active)],
-                      foreground=[("disabled", "#ffffff")],
+                      foreground=[("disabled", "#161c18")],
                       bordercolor=[("disabled", disabled), ("focus", P["text"])],
                       lightcolor=[("disabled", disabled), ("pressed", active), ("active", active)],
                       darkcolor=[("disabled", disabled), ("pressed", active), ("active", active)])
@@ -301,7 +290,7 @@ class ActionRow(tk.Frame):
         self.badge = None
         if badge and item.enabled:
             self.badge = tk.Label(self, text=badge, font=theme.caps, bg=P["accent"],
-                                  fg="#ffffff", padx=8, pady=2)
+                                  fg="#161c18", padx=8, pady=2)
             self.badge.pack(side="right")
         self._widgets = [self, self.body, self.title, self.hint, self.side]
         for widget in self._widgets + ([self.badge] if self.badge else []):
@@ -409,7 +398,7 @@ class OptionRow(tk.Frame):
             fill = P["accent"] if chosen else P["surface"]
             canvas.create_rectangle(2, 2, 18, 18, outline=ring, width=2, fill=fill)
             if chosen:
-                canvas.create_line(5, 10, 8.5, 13.5, 15, 6, fill="#ffffff", width=2.2,
+                canvas.create_line(5, 10, 8.5, 13.5, 15, 6, fill="#161c18", width=2.2,
                                    capstyle="round", joinstyle="round")
         else:
             canvas.create_oval(2, 2, 18, 18, outline=ring, width=2, fill=P["surface"])
@@ -441,12 +430,12 @@ class Stepper(tk.Canvas):
             if done:
                 self.create_oval(x - 12, y - 12, x + 12, y + 12, fill=P["accent"],
                                  outline=P["accent"])
-                self.create_line(x - 5, y, x - 1.5, y + 4, x + 5.5, y - 4, fill="#ffffff",
+                self.create_line(x - 5, y, x - 1.5, y + 4, x + 5.5, y - 4, fill="#161c18",
                                  width=2.2, capstyle="round", joinstyle="round")
             elif now:
                 color = P["warning"] if warning else P["accent"]
                 self.create_oval(x - 12, y - 12, x + 12, y + 12, fill=color, outline=color)
-                self.create_text(x, y, text=str(index + 1), fill="#ffffff",
+                self.create_text(x, y, text=str(index + 1), fill="#161c18",
                                  font=self.theme.small_bold)
             else:
                 self.create_oval(x - 12, y - 12, x + 12, y + 12, fill=P["sidebar"],
@@ -477,8 +466,14 @@ class ToolkitWindow:
         self._rendered_items = None
         self._scroll_areas = []
         self._confirm_job = None
-        root.title("Jibo DFU Mod Toolkit")
+        root.title("BEetle — 5x1 Setup Toolkit")
         root.configure(bg=P["bg"])
+        self.brand_icon = None
+        try:
+            self.brand_icon = tk.PhotoImage(file=str(Path(__file__).parent / "assets/5x1/logo.png"))
+            root.iconphoto(True, self.brand_icon)
+        except tk.TclError:
+            pass
         root.geometry("1080x720")
         root.minsize(920, 640)
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -505,9 +500,9 @@ class ToolkitWindow:
         side.pack_propagate(False)
         inner = tk.Frame(side, bg=P["sidebar"])
         inner.pack(fill="both", expand=True, padx=24, pady=(26, 20))
-        tk.Label(inner, text="Jibo DFU", font=theme.brand, bg=P["sidebar"],
+        tk.Label(inner, text="BEetle", image=self.brand_icon or "", compound="left", font=theme.brand, bg=P["sidebar"],
                  fg=P["sidebar_text"], anchor="w").pack(fill="x")
-        tk.Label(inner, text="Mod Toolkit", font=theme.base, bg=P["sidebar"],
+        tk.Label(inner, text="5x1 · Jibo setup and recovery", font=theme.base, bg=P["sidebar"],
                  fg=P["sidebar_muted"], anchor="w").pack(fill="x")
         tk.Frame(inner, bg=P["sidebar_line"], height=1).pack(fill="x", pady=(20, 18))
         tk.Label(inner, text="USB FLOW", font=theme.caps, bg=P["sidebar"],
@@ -542,9 +537,9 @@ class ToolkitWindow:
             tk.Label(footer, text=str(backups), font=theme.small, bg=P["sidebar"],
                      fg=P["sidebar_text"], anchor="w", justify="left",
                      wraplength=240).pack(fill="x", pady=(2, 10))
-        self.phoenix_entry = ttk.Button(footer, text="Connect to Phoenix (jibo.io)",
-                                       style="SidebarLink.TButton", command=self.show_phoenix)
-        self.phoenix_entry.pack(anchor="w")
+        self.setup_entry = ttk.Button(footer, text="Set up with 5x1",
+                                       style="SidebarLink.TButton", command=self.show_setup)
+        self.setup_entry.pack(anchor="w")
 
         main = tk.Frame(self.root, bg=P["bg"])
         main.grid(row=0, column=1, sticky="nsew")
@@ -670,25 +665,12 @@ class ToolkitWindow:
         self._show("progress", self.progress)
         self.render_output()
 
-    def show_phoenix(self):
-        """User-requested, local guidance; never interrupt a running robot flow."""
+    def show_setup(self):
         if self.controller.busy:
             return
-        self.prompt = None
-        self._stop_progress()
-        page = self._new_page("phoenix")
-        self._header(page, "Bring your Jibo online with Phoenix")
-        buttons = self._button_bar(page)
-        back = ttk.Button(buttons, text="Back to actions", command=self.show_home)
-        back.pack(side="right")
-        area = ScrollArea(page, P["bg"])
-        area.pack(fill="both", expand=True)
-        self._scroll_areas.append(area)
-        self._build_phoenix_card(area.inner, self.show_home, show_prerequisite=True)
-        self.controls["primary"] = back
-        back.focus_set()
+        self.controller.start_action("setup-5x1")
 
-    # -- main actions ------------------------------------------------------
+
     def _render_actions(self, snap):
         signature = tuple((item.key, item.label, item.enabled, item.reason)
                           for item in snap.items)
@@ -729,7 +711,7 @@ class ToolkitWindow:
         self.status_detail.configure(text=snap.detail)
         self.status_port.configure(text=("USB port " + snap.port) if snap.port else "")
         self.refresh_button.state(["disabled"] if snap.busy else ["!disabled"])
-        self.phoenix_entry.state(["disabled"] if snap.busy else ["!disabled"])
+        self.setup_entry.state(["disabled"] if snap.busy else ["!disabled"])
         self.note.configure(text=snap.note)
         if self.page_name == "home":
             self._render_actions(snap)
@@ -1066,45 +1048,6 @@ class ToolkitWindow:
         back.focus_set()
         self.controls = {"primary": back, "body": body}
 
-    def _build_phoenix_card(self, parent, on_dismiss, *, show_prerequisite=False):
-        card = tk.Frame(parent, bg=P["surface"], highlightthickness=1,
-                        highlightbackground=P["border"])
-        card.pack(fill="x", pady=(16, 0))
-        body = tk.Frame(card, bg=P["surface"])
-        body.pack(fill="x", padx=18, pady=16)
-        title = tk.Label(body, text=PHOENIX_CARD_TITLE, font=self.theme.heading,
-                         bg=P["surface"], fg=P["text"], anchor="w", justify="left")
-        title.pack(fill="x")
-        _wrapping(title)
-        intro = tk.Label(body, text=PHOENIX_INTRO, font=self.theme.small,
-                         bg=P["surface"], fg=P["muted"], anchor="w", justify="left")
-        intro.pack(fill="x", pady=(4, 8))
-        _wrapping(intro)
-        steps = ((PHOENIX_PREREQUISITE,) if show_prerequisite else ()) + PHOENIX_STEPS
-        for step in steps:
-            label = tk.Label(body, text=step, font=self.theme.base, bg=P["surface"],
-                             fg=P["text"], anchor="w", justify="left")
-            label.pack(fill="x", pady=(4, 0))
-            _wrapping(label)
-        buttons = tk.Frame(body, bg=P["surface"])
-        buttons.pack(fill="x", pady=(14, 0))
-        open_button = ttk.Button(buttons, text="Open jibo.io",
-                                 command=self.controller.open_phoenix_guide)
-        open_button.pack(side="left")
-
-        def dismiss():
-            self.controller.dismiss_phoenix()
-            card.destroy()
-            for key in ("phoenix_card", "phoenix_title", "phoenix_open", "phoenix_dismiss"):
-                self.controls.pop(key, None)
-            on_dismiss()
-
-        not_now = ttk.Button(buttons, text="Not now", command=dismiss)
-        not_now.pack(side="left", padx=(10, 0))
-        self.controls.update(phoenix_card=card, phoenix_title=title,
-                             phoenix_open=open_button, phoenix_dismiss=not_now)
-        return card
-
     # -- results -----------------------------------------------------------
     def show_outcome(self, outcome):
         self._stop_progress()
@@ -1140,8 +1083,6 @@ class ToolkitWindow:
                              justify="left")
             label.pack(fill="x", pady=(0 if index == 0 else 4, 0))
             _wrapping(label)
-        if self.controller.should_show_phoenix(outcome):
-            self._build_phoenix_card(area.inner, lambda: None)
         log_lines = self.controller.output_state().lines
         log = None
         if log_lines:
@@ -1263,7 +1204,7 @@ def create_root():
 def main(api):
     """Open the window for the real device layer and run until it closes."""
     root = create_root()
-    controller = core.GuiController(api, preferences_path=api.BACKUP_ROOT / ".phoenix-guidance.json")
+    controller = core.GuiController(api)
     ToolkitWindow(root, controller)
     with core.capture_output(controller):
         root.mainloop()

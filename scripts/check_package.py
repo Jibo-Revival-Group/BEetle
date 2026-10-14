@@ -18,6 +18,8 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ("jibo_dfu.py", "jibo_dfu_bounded.py", "jibo_dfu_pipeline.py",
+           "beetle_setup.py", "beetle_robot.py", "FORK.md", "requirements-setup.txt",
+           "assets/5x1/logo.svg", "assets/5x1/logo.png", "assets/5x1/isrg-root-x1.pem",
            "jibo_images.py", "jibo_updates.py", "jibo_tui.py", "jibo_gui.py", "jibo_gui_core.py",
            "LICENSE", "NOTICE.md",
            "assets/boot-network-status/startup-view.js",

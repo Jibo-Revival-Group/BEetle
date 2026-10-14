@@ -108,7 +108,7 @@ def test_double_click_shell_wrapper_uses_own_folder_with_spaces(tmp_path):
 
 
 def test_desktop_launcher_is_valid_and_passes_its_path_as_argument():
-    file = ROOT / "Jibo DFU Toolkit.desktop"
+    file = ROOT / "BEetle.desktop"
     if shutil.which("desktop-file-validate"):
         result = subprocess.run(["desktop-file-validate", str(file)], capture_output=True, text=True)
         assert result.returncode == 0, result.stderr
@@ -122,10 +122,10 @@ def test_desktop_launcher_is_valid_and_passes_its_path_as_argument():
 
 def test_desktop_exec_runs_through_real_gio_parser_with_spaces(tmp_path):
     pytest.importorskip("gi")
-    from gi.repository import Gio
+    Gio = pytest.importorskip("gi.repository.Gio", reason="GObject introspection is unavailable")
     repo = tmp_path / "folder with spaces"
     repo.mkdir()
-    desktop = repo / "Jibo DFU Toolkit.desktop"
+    desktop = repo / "BEetle.desktop"
     # Only disable Terminal in this throwaway copy; execute the real Exec parser.
     desktop.write_text((ROOT / desktop.name).read_text().replace("Terminal=true", "Terminal=false"))
     trace = repo / "trace"
@@ -151,10 +151,10 @@ def test_windows_wrapper_preserves_wsl_helper_and_explicit_gui_switch():
 
 
 def test_mac_double_click_command_calls_shell_wrapper():
-    command = (ROOT / "Jibo DFU Toolkit.command").read_text()
+    command = (ROOT / "BEetle.command").read_text()
     assert "run-gui.sh" in command
     assert '"$repo_dir/run-gui.sh"' in command
-    assert (ROOT / "Jibo DFU Toolkit.command").stat().st_mode & 0o111
+    assert (ROOT / "BEetle.command").stat().st_mode & 0o111
 
 
 def test_package_contains_gui_and_rejects_stale_view():

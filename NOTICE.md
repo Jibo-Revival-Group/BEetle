@@ -30,3 +30,10 @@ own licenses and notices, which are not replaced by this file:
 
 Downloadable single-file builds also bundle third-party runtimes and tools. Their
 licenses, notices and source information ship inside each download.
+
+## BEetle fork changes
+
+5x1 branding and setup workflow, Copyright (C) 2026 BEetle contributors.
+These changes are GPL-3.0-only. Upstream authorship above is retained.
+The ISRG Root X1 certificate is a public trust anchor from Let’s Encrypt.
+The 5x1 logo is supplied by the local 5x1.com project.

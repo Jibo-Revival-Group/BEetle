@@ -17,8 +17,7 @@ def window(tmp_path):
     root = gui.create_root()
     errors = []
     root.report_callback_exception = lambda *exc: errors.append(exc)
-    c = core.GuiController(FakeApi(), runner=core.sync_runner,
-                           preferences_path=tmp_path / "phoenix.json")
+    c = core.GuiController(FakeApi(), runner=core.sync_runner)
     w = gui.ToolkitWindow(root, c)
     root.update()
     yield w
@@ -227,227 +226,66 @@ def visible_texts(widget):
     return texts
 
 
-@pytest.mark.parametrize("guide", [False, True], ids=["completion", "guidance"])
-def test_phoenix_step_3_matches_owner_copy_on_both_surfaces(window, guide):
-    if guide:
-        window.phoenix_entry.invoke()
-    else:
-        window.show_outcome(core.Outcome("result", "set-mode-wifi", "Setup", ("Saved.",),
-                                         "verified", "int-developer"))
-    window.root.update()
-    steps = [str(label.cget("text")) for label in card_labels(window.controls["phoenix_card"])
-             if str(label.cget("text")).startswith("3. ")]
-    assert steps == [PHOENIX_STEP_3]
 
 
-def test_phoenix_completion_card_has_exact_steps_and_no_prerequisite_line(window):
-    w = window
-    w.show_outcome(core.Outcome("result", "set-mode-wifi", "Set mode and configure Wi-Fi",
-                                ("Robot mode set to int-developer.", "Saved Wi-Fi network."),
-                                "verified", "int-developer"))
-    w.root.update()
-    card = w.controls["phoenix_card"]
-    assert [label.cget("text") for label in card_labels(card)] == list(PHOENIX_CARD_LINES)
-    texts = visible_texts(w.root)
-    assert texts.count(PHOENIX_STEP_3) == 1
-    assert not any("int-developer mode and your Wi-Fi" in text for text in texts)
-    assert not any("Enter his IP" in text for text in texts)
 
 
-def test_phoenix_guidance_page_adds_prerequisite_between_intro_and_steps(window):
-    w = window
-    w.phoenix_entry.invoke()
-    w.root.update()
-    assert w.page_name == "phoenix"
-    card = w.controls["phoenix_card"]
-    assert [label.cget("text") for label in card_labels(card)] == [
-        *PHOENIX_CARD_LINES[:2], PHOENIX_PREREQUISITE, *PHOENIX_CARD_LINES[2:]]
-    texts = visible_texts(w.root)
-    assert texts.count(PHOENIX_PREREQUISITE) == 1 and texts.count(PHOENIX_STEP_3) == 1
-    assert not any("Enter his IP" in text for text in texts)
-    w.controls["primary"].invoke()  # Back to actions: the guide never changes dismissal
-    w.root.update()
-    assert w.page_name == "home" and not w.controller._phoenix_dismissed
 
 
-def test_phoenix_card_absent_after_successful_developer_mode_setup(window):
-    w = window
-    w.show_outcome(core.Outcome("result", "set-mode-wifi", "Set mode and configure Wi-Fi",
-                                ("Robot mode set to developer.", "Saved Wi-Fi network."),
-                                "verified", "developer"))
-    w.root.update()
-    assert w.page_name == "result" and "phoenix_card" not in w.controls
-    assert not any("Phoenix" in text for text in visible_texts(w.content))
-    assert w.controls["primary"].cget("text") == "Back to actions"
 
 
-def test_phoenix_completion_card_is_inline_dismissible_and_opens_only_on_click(window):
-    w = window
-    opened = []
-    w.controller._browser_opener = lambda url: opened.append(url) or True
-    result = core.Outcome("result", "set-mode-wifi", "Set mode and configure Wi-Fi",
-                          ("Robot mode set to int-developer.", "Saved Wi-Fi network."),
-                          "verified", "int-developer")
-    w.show_outcome(result)
-    w.root.update()
-    assert w.page_name == "result" and w.controls["phoenix_card"].winfo_ismapped()
-    assert w.controls["phoenix_title"].cget("text") == "Next: connect him to Phoenix"
-    assert w.controls["primary"].cget("text") == "Back to actions"
-    assert not opened
-    w.controls["phoenix_open"].invoke()
-    assert opened == ["https://jibo.io/guide"]
-    w.controls["phoenix_dismiss"].invoke()
-    w.root.update()
-    assert w.page_name == "result" and "phoenix_card" not in w.controls
-    w.show_outcome(result)
-    assert "phoenix_card" not in w.controls
-    assert not w.controller.api.calls
 
 
-@pytest.mark.parametrize("state", ["none", "rcm", "dfu"])
-def test_quiet_phoenix_entry_works_offline_after_dismissal(window, state):
-    w = window
-    opened = []
-    w.controller._browser_opener = lambda url: opened.append(url) or True
-    w.controller.dismiss_phoenix()
-    w.controller.api.state = state
-    w.controller.request_refresh()
-    w.render_state()
-    w.root.update()
-    assert w.page_name == "home"  # no launch or USB-change popup
-    assert w.phoenix_entry.cget("text") == "Connect to Phoenix (jibo.io)"
-    assert w.phoenix_entry.winfo_viewable()
-    assert not w.phoenix_entry.instate(["disabled"])
-    w.phoenix_entry.invoke()
-    w.root.update()
-    assert w.page_name == "phoenix" and not opened
-    assert w.controls["phoenix_card"].winfo_viewable()
-    w.controls["phoenix_open"].invoke()
-    assert opened == ["https://jibo.io/guide"]
-    w.controls["phoenix_dismiss"].invoke()
-    assert w.page_name == "home" and not w.controller.api.calls
 
 
-def test_default_actions_keep_all_rows_visible_with_quiet_phoenix_entry(window):
-    w = window
-    w.root.update()
-    last = w.action_rows["more-tools"]
-    canvas = w.actions.canvas
-    assert last.winfo_rooty() + last.winfo_height() <= canvas.winfo_rooty() + canvas.winfo_height()
-    entry = w.phoenix_entry
-    assert entry.winfo_rootx() + entry.winfo_width() <= w.content.winfo_rootx()
 
 
-@pytest.mark.parametrize("state", ["none", "multiple", "rcm", "dfu"])
-def test_phoenix_sidebar_link_fits_at_minimum_window_size(window, state):
-    w = window
-    w.controller.api.state = state
-    w.controller.request_refresh()
-    w.render_state()
-    w.root.geometry("920x640")
-    w.root.update()
-    entry = w.phoenix_entry
-    assert entry.winfo_viewable()
-    assert entry.winfo_height() >= entry.winfo_reqheight()
-    assert entry.winfo_width() >= entry.winfo_reqwidth()
-    assert entry.winfo_rooty() + entry.winfo_height() <= w.root.winfo_rooty() + 640
 
 
-@pytest.mark.parametrize("geometry", ["920x640", "1080x720"])
-@pytest.mark.parametrize("guide", [False, True])
-def test_phoenix_card_controls_fit_at_minimum_and_docs_window_sizes(window, guide, geometry):
-    w = window
-    w.root.geometry(geometry)
-    if guide:
-        w.show_phoenix()
-    else:
-        w.show_outcome(core.Outcome("result", "set-mode-wifi", "Set mode and configure Wi-Fi",
-                                   ("Robot mode set to int-developer.", "Saved Wi-Fi network.",
-                                    "Operation record: ~/Jibo-Backups/mode-wifi"),
-                                   "verified", "int-developer"))
-    w.root.update()
-    card = w.controls["phoenix_card"]
-    area = card.master.master.master  # ScrollArea -> canvas -> inner -> card
-    for label in card_labels(card):
-        assert label.winfo_height() >= label.winfo_reqheight()
-        assert label.winfo_rootx() >= area.canvas.winfo_rootx()
-        assert label.winfo_rootx() + label.winfo_width() <= (
-            area.canvas.winfo_rootx() + area.canvas.winfo_width())
-    area.canvas.yview_moveto(1)
-    w.root.update()
-    for key in ("phoenix_open", "phoenix_dismiss", "primary"):
-        widget = w.controls[key]
-        assert widget.winfo_viewable()
-        assert widget.winfo_width() >= widget.winfo_reqwidth()
-        assert widget.winfo_height() >= widget.winfo_reqheight()
-        viewport = w.root if key == "primary" else area.canvas
-        assert widget.winfo_rooty() >= viewport.winfo_rooty()
-        assert widget.winfo_rooty() + widget.winfo_height() <= (
-            viewport.winfo_rooty() + viewport.winfo_height())
 
 
-def test_phoenix_entry_cannot_replace_active_transfer_or_prompt(window):
-    w = window
-    w.controller._busy = True
-    w.show_progress()
-    w.render_state()
-    assert w.phoenix_entry.instate(["disabled"])
-    w.show_phoenix()
-    assert w.page_name == "progress"
-    w.controller._busy = False
 
 
-@pytest.mark.parametrize("kind,status,mode", [
-    ("result", "verified", "developer"),
-    ("result", "already current", "developer"),
-    ("result", "verified", "normal"),
-    ("result", "verified", "oobe"),
-    ("result", "cancelled", "int-developer"),
-    ("error", "verified", "int-developer"),
-    ("result", "verified", ""),
-])
-def test_phoenix_card_absent_on_ineligible_completion(window, kind, status, mode):
-    window.show_outcome(core.Outcome(kind, "set-mode-wifi", "Setup", ("Summary",), status, mode))
-    window.root.update()
-    assert "phoenix_card" not in window.controls
-    assert window.controls["primary"].winfo_viewable()
 
 
-def test_phoenix_not_now_survives_real_window_recreation(window):
-    import jibo_gui as gui
-    result = core.Outcome("result", "set-mode-wifi", "Setup", ("Saved.",), "verified", "int-developer")
-    prefs = window.controller._preferences_path
-    window.show_outcome(result)
-    window.controls["phoenix_dismiss"].invoke()
-    window.close()
-    root = gui.create_root()
-    fresh = gui.ToolkitWindow(root, core.GuiController(FakeApi(), runner=core.sync_runner,
-                                                      preferences_path=prefs))
-    try:
-        fresh.show_outcome(result)
-        root.update()
-        assert "phoenix_card" not in fresh.controls
-        fresh.show_home()
-        fresh.phoenix_entry.invoke()
-        root.update()
-        assert fresh.controls["phoenix_card"].winfo_viewable()
-    finally:
-        fresh.close()
 
 
-def test_real_gui_main_wires_local_dismissal_path(tmp_path, monkeypatch):
+def test_real_gui_main_creates_no_enrollment_preferences(tmp_path, monkeypatch):
     import jibo_gui as gui
     api = FakeApi()
     api.BACKUP_ROOT = tmp_path / "Jibo-Backups"
     captured = []
     class Root:
         def mainloop(self):
-            captured[0].dismiss_phoenix()
+            pass
     monkeypatch.setattr(gui, "create_root", Root)
     monkeypatch.setattr(gui, "ToolkitWindow", lambda _root, c: captured.append(c))
     assert gui.main(api) == 0
-    assert (api.BACKUP_ROOT / ".phoenix-guidance.json").is_file()
+    assert not api.BACKUP_ROOT.exists()
     assert not api.calls
+
+
+def test_setup_sidebar_runs_shared_workflow(window, monkeypatch):
+    import beetle_setup
+    calls = []
+    monkeypatch.setattr(beetle_setup, "run_guided", lambda api, flows, port:
+        calls.append((api, port)) or {"status": "cancelled", "message": "Setup paused.", "session": "example.json"})
+    assert window.setup_entry.cget("text") == "Set up with 5x1"
+    window.setup_entry.invoke()
+    window._poll()
+    window.root.update()
+    assert calls == [(window.controller.api, "1-1")]
+    assert window.page_name == "result"
+
+
+def test_setup_sidebar_cannot_interrupt_running_action(window, monkeypatch):
+    calls = []
+    monkeypatch.setattr(window.controller, "start_action", lambda key: calls.append(key))
+    window.controller._busy = True
+    window.render_state()
+    window.show_setup()
+    assert window.setup_entry.instate(["disabled"])
+    assert not calls
 
 
 def test_error_result_is_visibly_failed(window):

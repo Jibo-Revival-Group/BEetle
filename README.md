@@ -1,4 +1,15 @@
-# Jibo DFU Mod Toolkit
+# BEetle — 5x1 Setup Toolkit
+
+A local 5x1 fork of Paskooter’s Jibo DFU Mod Toolkit. Upstream history, licensing, loader pins, advanced tools and backup formats are retained; see [fork provenance](FORK.md).
+
+Choose **Set up with 5x1** to back up and prepare Jibo over USB, then install BEam/BEnch and connect hosted 5x1 services over Wi-Fi/SSH. OOBE robots finish in normal mode. See [setup and recovery](docs/setup-5x1.md).
+
+```sh
+python3 scripts/install_setup_deps.py
+python3 jibo_dfu.py setup-5x1 --session ~/Jibo-Backups/beetle-5x1-session.json
+```
+
+New 5x1 setup has automated fixture coverage; live OOBE/provisioned robot validation is still required. Historical hardware results below refer to upstream DFU features.
 
 A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg + usbipd-win** or **Linux**; a native **macOS** launcher is also available. The original text menu and scripting commands remain available.
 
@@ -9,8 +20,8 @@ Clone or download this repository, extract it if needed, and keep the launchers 
 | Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
 | --- | --- | --- | --- |
 | **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
-| **macOS Intel / Apple silicon** | `Jibo DFU Toolkit.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); Intel tested, Apple silicon **experimental** |
-| **Linux x86_64** | `Jibo DFU Toolkit.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
+| **macOS Intel / Apple silicon** | `BEetle.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); Intel tested, Apple silicon **experimental** |
+| **Linux x86_64** | `BEetle.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
 
 Linux file managers may require **Allow Launching** or **Trust** for the `.desktop` file. On macOS, Finder may require **Open** for the `.command` file; it is not a signed/notarized app. First launch may need internet access to build the host tools and may open a terminal for setup or authorization. **Host setup authorization is not consent to write a robot**: each device change has its own review.
 
@@ -54,7 +65,7 @@ For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro 
 
 **Any stock Jibo that has never been modified is supported with 100% certainty.** I have personally tested every stock firmware version and all stock files. Windows, Linux and Intel Macs have also been tested; Apple silicon Macs are experimental.
 
-If your robot was previously changed by another mod system, it will most likely work with no changes, but that cannot be guaranteed: there is no way to foresee changes someone else made. If it doesn't work, ask in the [Phoenix Discord](https://discord.gg/FyDVYQ6FfV). I'm happy to help.
+If your robot was previously changed by another mod system, it will most likely work with no changes, but that cannot be guaranteed: there is no way to foresee changes someone else made. If it doesn't work, ask in the [Jibo Revival Group Discord](https://discord.gg/CBVJzkRGwN). I'm happy to help.
 
 ## Quick path: stock Jibo to int-developer
 
@@ -71,8 +82,8 @@ If you are here to mod a stock robot, use the guided menu to change its existing
 On an x86_64 Linux system (including WSL 2), clone the repository and run the launcher:
 
 ```sh
-git clone https://github.com/Paskooter/Jibo-DFU-Mod-Toolkit.git
-cd Jibo-DFU-Mod-Toolkit
+git clone https://github.com/Jibo-Revival-Group/BEetle.git
+cd BEetle
 ./run.sh --gui
 ```
 
@@ -120,8 +131,8 @@ Install [Homebrew](https://brew.sh) and native tools with a matching Python/Tk p
 
 ```sh
 brew install python@3.12 python-tk@3.12 dfu-util libusb e2fsprogs
-git clone https://github.com/Paskooter/Jibo-DFU-Mod-Toolkit.git
-cd Jibo-DFU-Mod-Toolkit
+git clone https://github.com/Jibo-Revival-Group/BEetle.git
+cd BEetle
 JIBO_PYTHON="$(brew --prefix python@3.12)/bin/python3.12" ./run.sh --gui
 ```
 
@@ -129,7 +140,7 @@ If you already use another Python 3.10+ version, install its matching `python-tk
 
 The launcher does not install packages itself: it checks the tools above before opening the interface and prints the exact install command if one is missing. Installing Homebrew also installs the Xcode Command Line Tools (`cc`, `make`, `git`) that the first launch uses to build the ShofEL entry helper from the pinned in-repo payloads, so no ARM cross-compiler is needed. That helper is downloaded, built once on the first launch (internet required), and reused afterwards. No `sudo` is needed on a Mac, and backups are saved under the invoking owner's `~/Jibo-Backups`. On Apple silicon, open a native Terminal session with Rosetta disabled.
 
-For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php). Without Homebrew the launcher finds MacPorts in `/opt/local` on its own, so `Jibo DFU Toolkit.command` works by double-click:
+For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php). Without Homebrew the launcher finds MacPorts in `/opt/local` on its own, so `BEetle.command` works by double-click:
 
 ```sh
 sudo port install python312 py312-tkinter tk dfu-util libusb e2fsprogs
@@ -226,7 +237,7 @@ confirmation, write and SHA-256 readback transaction, with mode and Wi-Fi in the
 same candidate image. The guided confirmation discloses the larger transfer.
 It does not require networking, cloud access, SSH or an OTA on the robot.
 
-The assets live under `/var/jibo/phoenix/network-status/`; one guarded `lo`
+The upstream diagnostic assets retain `/var/jibo/phoenix/network-status/` for compatibility; one guarded `lo`
 `post-up` line in `/var/etc/network/interfaces` binds the matching renderer over
 the read-only SSM startup-view file **in memory only**, before X11/SSM starts.
 The services partition is never rewritten or remounted read-write. Unknown/custom
@@ -247,10 +258,10 @@ The Wi-Fi/IP line appears only in **developer** or **int-developer** mode with *
 | On Jibo's screen | What it means and what to do |
 | --- | --- |
 | `Wi-Fi: checking...` | Jibo is starting up and checking Wi-Fi. Wait for the status to update. |
-| `Wi-Fi: connected to <network name> · IP <address>` | Wi-Fi is connected and Jibo has an IP address. This is the IP address the Phoenix console's **Robots → Add a Jibo** command asks for. |
+| `Wi-Fi: connected to <network name> · IP <address>` | Wi-Fi is connected and Jibo has an IP address. Use this IP for the SSH stage of **Set up with 5x1**. |
 | `Wi-Fi: connected, waiting for address` | Jibo has joined the network, but the router has not given him an IP address yet. Wait a minute; if it stays here, check the router and its DHCP settings. |
 | `Wi-Fi: not connected` | Jibo is not connected to Wi-Fi. Check the network name and password, and make sure Jibo is within range of the router. Re-run **Set mode and configure Wi-Fi** or **Add or update a Wi-Fi network** with the correct name and password, then restart Jibo. |
-| `Wi-Fi: status unavailable` | The Wi-Fi status could not be read. Restart Jibo once; if it still appears, ask in the [Phoenix Discord](https://discord.gg/FyDVYQ6FfV). |
+| `Wi-Fi: status unavailable` | The Wi-Fi status could not be read. Restart Jibo once; if it still appears, ask in the [Jibo Revival Group Discord](https://discord.gg/CBVJzkRGwN). |
 
 If the line is missing, check the mode and enable the option in **Set mode and configure Wi-Fi**, then restart. To remove it, choose **More tools → Remove boot-screen Wi-Fi/IP status**, then restart Jibo. Unchecking the GUI checkbox leaves the current setting unchanged; it does not remove an installed status line.
 
@@ -283,7 +294,7 @@ no startup-view child bind. The monitor is not a synchronous updater handshake.
 
 On Moth, ShofEL started the RAM loader and the robot entered DFU on the same USB port. Two consecutive 17 KiB GPT marker reads in one DFU session validated the partition layout. A full DFU read of `var` took 116.9 seconds and produced exactly 524,288,000 bytes with SHA-256 `4a58631e0c6eb0559bef7d2827676a1bce7965886f2887afbdc65dedce18416b`. That matched Moth's September read-only ShofEL `var` backup byte for byte. The temporary comparison copy was removed; neither validation wrote eMMC. An older full eMMC dump from June has different `var` contents, so it is not the matching reference for this test.
 
-A mode change to `int-developer` has also been confirmed on a connected Jibo. The owner has verified the Windows/WSL USB helper through RCM-to-DFU reattachment, other USB state changes, unplug/replug, and power-off/power-on. On Aero, a compact 13.0.0 package transfer with preserved `var` completed and the robot booted. The first-boot resize tag was written after the script's `set -e` resize sequence. Live SSH inspection found rootfsA, rootfsB, and services ext4 block counts exactly equal to their GPT partition sizes; skills occupies all but 2,560 bytes of its 10,991,139,328-byte partition. `var` retained `int-developer` and its original 500 MiB size. Selectable GPT partition backup and restore are implemented. A raw full eMMC user-area backup and restore are not implemented. The toolkit does not enable SSH.
+A mode change to `int-developer` has also been confirmed on a connected Jibo. The owner has verified the Windows/WSL USB helper through RCM-to-DFU reattachment, other USB state changes, unplug/replug, and power-off/power-on. On Aero, a compact 13.0.0 package transfer with preserved `var` completed and the robot booted. The first-boot resize tag was written after the script's `set -e` resize sequence. Live SSH inspection found rootfsA, rootfsB, and services ext4 block counts exactly equal to their GPT partition sizes; skills occupies all but 2,560 bytes of its 10,991,139,328-byte partition. `var` retained `int-developer` and its original 500 MiB size. Selectable GPT partition backup and restore are implemented. A raw full eMMC user-area backup and restore are not implemented. The original DFU tools do not configure SSH; the 5x1 setup workflow uses temporary developer mode and removes the active firewall script during bring-up.
 
 The official 5.4.2 and 13.0.0 flash packages each include one `u-boot-flasher.bin` and one base `meerkat_rev02.bct` (plus its signed copy). Their base BCT files are byte-identical, but `bct_dump` shows **two distinct DDR3 configurations**, in RAM slots 2 and 3; two EMC timing fields differ. Jibo's `flash-dfu.sh` passes the BCT and flasher separately to `tegrarcm`, supplying those RAM configurations through the BCT. [Jibo's archived flashing instructions](https://pvindex.org/confluence/display/ENG/Building+a+single+step+flash+system+for+Jibo) also prescribe different build configurations for EVT and DVT2, with an explicit Meerkat Rev02 BCT selection for DVT2. One bundled flasher binary therefore does not establish that every board revision uses the same RAM entry path.
 
@@ -291,6 +302,6 @@ The toolkit's ShofEL entry now selects the official Meerkat Rev02 **RAM slot 2 o
 
 ## License
 
-The Jibo DFU Mod Toolkit is free software under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may use, study, change and share it. If you distribute it or a modified version, including inside another project, you must keep the copyright and license notices, release your version under the GPL-3.0, and publish its complete source.
+The BEetle — 5x1 Setup Toolkit is free software under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may use, study, change and share it. If you distribute it or a modified version, including inside another project, you must keep the copyright and license notices, release your version under the GPL-3.0, and publish its complete source.
 
 U-Boot, ShofEL2 and the stock robot files the toolkit modifies keep their own licenses; [NOTICE.md](NOTICE.md) lists which parts they cover.

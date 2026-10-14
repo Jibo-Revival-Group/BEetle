@@ -71,6 +71,8 @@ class PackageTests(unittest.TestCase):
         self.run_package()
 
         expected = {
+            "beetle_setup.py", "beetle_robot.py", "FORK.md", "requirements-setup.txt",
+            "assets/5x1/logo.svg", "assets/5x1/logo.png", "assets/5x1/isrg-root-x1.pem",
             "__main__.py", "loader.bin", "entry-patch.sha256", "README.md", "LICENSE", "NOTICE.md",
             "jibo_dfu.py",
             "jibo_dfu_bounded.py", "jibo_dfu_pipeline.py", "jibo_images.py",
@@ -85,7 +87,8 @@ class PackageTests(unittest.TestCase):
             "assets/boot-network-status/manifest.json",
         }
         with zipfile.ZipFile(self.output) as archive:
-            self.assertEqual(set(archive.namelist()), expected)
+            self.assertEqual({n for n in archive.namelist() if not n.startswith("setup-deps/")}, expected)
+            self.assertFalse(any("__pycache__" in n for n in archive.namelist()))
             self.assertEqual(archive.read("loader.bin"), self.padded_loader)
             self.assertEqual(archive.read("tools/shofel2_t124"), self.shofel.read_bytes())
             self.assertEqual(archive.read("tools/intermezzo.bin"), b"RCM intermezzo")

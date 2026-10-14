@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Jibo DFU Mod Toolkit
+Name=BEetle — 5x1 Setup Toolkit
 Comment=USB recovery, backups, mode and Wi-Fi settings
 Exec=bash -c "cd -- \"\\$(dirname -- \"\\$1\")\" && exec /bin/bash ./run-gui.sh" jibo %k
 Icon=computer

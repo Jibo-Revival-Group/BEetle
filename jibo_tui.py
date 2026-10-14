@@ -205,6 +205,7 @@ def build_menu_items(readiness, update_packages=()):
         MenuItem("flash-update", "Install an official update package",
                  is_dfu and not missing_update and bool(packages), update_reason),
         MenuItem("backup-var", "Save or check a var backup", is_dfu, connection_reason),
+        MenuItem("setup-5x1", "Set up with 5x1", readiness.state != "multiple", "Connect one robot at a time." if readiness.state == "multiple" else ""),
         MenuItem("more-tools", "More tools and local images"),
     ]
     return tuple(items)
@@ -255,7 +256,7 @@ def _screen_heading(screen, title, detail=""):
     height, width = screen.getmaxyx()
     bold = getattr(curses, "A_BOLD", 0)
     dim = getattr(curses, "A_DIM", 0)
-    _addstr(screen, 0, 0, "JIBO DFU TOOLKIT", bold)
+    _addstr(screen, 0, 0, "BEETLE / 5X1", bold)
     _addstr(screen, 2, 0, title, bold)
     line = 3
     for paragraph in str(detail or "").splitlines():
@@ -538,6 +539,8 @@ def _result_summary(action, result):
     status = result.get("status", "complete")
     if status == "cancelled":
         return [result.get("message", "No change was made.")]
+    if action == "setup-5x1":
+        return [result.get("message", "Setup paused."), "Session: " + result.get("session", ""), "Rollback: " + result.get("backup", "See the saved session.")]
     if action == "set-mode" and (result.get("mode") or result.get("new_mode")):
         mode = result.get("mode") or result["new_mode"]
         if status == "already current":
@@ -667,7 +670,7 @@ class TerminalMenu:
         dim = getattr(curses, "A_DIM", 0)
         bold = getattr(curses, "A_BOLD", 0)
         reverse = getattr(curses, "A_REVERSE", 0)
-        _addstr(screen, 0, 0, "JIBO DFU TOOLKIT", bold)
+        _addstr(screen, 0, 0, "BEETLE / 5X1", bold)
         _addstr(screen, 1, 0, "USB flow:  Connect  →  RCM/APX  →  DFU  →  Choose an action")
         first, second = status_lines(self.readiness)
         _addstr(screen, 3, 0, first, bold)
@@ -767,6 +770,7 @@ class TerminalMenu:
 
 def _action_hint(key):
     hints = {
+        "setup-5x1": "Back up and prepare over USB, then install BEam/BEnch and connect 5x1 over Wi-Fi. Resume saved setup here.",
         "enter-dfu-shofel": "Initializes the selected SDRAM profile and starts the RAM recovery loader from RCM/APX.",
         "probe-dfu-gpt": "Reads and checks the partition layout without writing eMMC.",
         "backup-var": "Read the robot's var partition and save one reusable local rollback image.",
@@ -890,6 +894,9 @@ def _run_update(api, port=None):
 
 def execute_action(api, key, readiness):
     """Run an action selected from the main screen using the shared curses prompts."""
+    if key == "setup-5x1":
+        import beetle_setup
+        return beetle_setup.run_guided(api, sys.modules[__name__], readiness.port or None)
     if key == "enter-dfu-shofel":
         if readiness.state != "rcm":
             raise RuntimeError("ShofEL DFU entry is available only while the robot is in RCM/APX.")

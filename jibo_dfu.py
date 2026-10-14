@@ -3081,6 +3081,9 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("interactive", help="Open the guided text menu")
     sub.add_parser("gui", help="Open the graphical window (same actions as the text menu)")
+    setup = sub.add_parser("setup-5x1", help="Guided USB-to-Wi-Fi 5x1 setup or resume")
+    setup.add_argument("--session", type=Path, help="Private setup session file")
+    _add_device_arguments(setup)
     sub.add_parser("detect", help="Show matching USB devices as JSON")
     sub.add_parser("list", help="Show matching USB devices in plain language")
     shofel_entry = sub.add_parser("enter-dfu-shofel",
@@ -3247,7 +3250,13 @@ def main(argv=None):
             return _launch_menu()
         if args.command == "gui":
             return _launch_gui()
-        if args.command == "detect":
+        if args.command == "setup-5x1":
+            import beetle_setup
+            try:
+                result = beetle_setup.cli(sys.modules[__name__], args)
+            except beetle_setup.SetupError as exc:
+                raise DfuError(str(exc)) from None
+        elif args.command == "detect":
             result = devices()
         elif args.command == "list":
             _display_devices()

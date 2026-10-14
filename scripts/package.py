@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import stat
 import subprocess
@@ -117,6 +118,13 @@ def main():
     data["entry-patch.sha256"] = (patch_sha + "\n").encode()
 
     sources = {
+        "beetle_setup.py": ROOT / "beetle_setup.py",
+        "beetle_robot.py": ROOT / "beetle_robot.py",
+        "FORK.md": ROOT / "FORK.md",
+        "requirements-setup.txt": ROOT / "requirements-setup.txt",
+        "assets/5x1/logo.svg": ROOT / "assets/5x1/logo.svg",
+        "assets/5x1/logo.png": ROOT / "assets/5x1/logo.png",
+        "assets/5x1/isrg-root-x1.pem": ROOT / "assets/5x1/isrg-root-x1.pem",
         "jibo_dfu.py": ROOT / "jibo_dfu.py",
         "jibo_dfu_bounded.py": ROOT / "jibo_dfu_bounded.py",
         "jibo_dfu_pipeline.py": ROOT / "jibo_dfu_pipeline.py",
@@ -131,6 +139,12 @@ def main():
     }
     for name, path in sources.items():
         data[name] = _read_file(parser, name, path)
+
+    dependency_root = ROOT / ".build/setup-deps"
+    if dependency_root.is_dir():
+        for path in sorted(dependency_root.rglob("*")):
+            if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+                data["setup-deps/" + path.relative_to(dependency_root).as_posix()] = path.read_bytes()
 
     asset_directory = ROOT / "assets/boot-network-status"
     manifest_raw = _read_file(parser, "Boot network status manifest", asset_directory / "manifest.json")
@@ -150,7 +164,8 @@ def main():
     data["assets/boot-network-status/manifest.json"] = manifest_raw
 
     for name, content in data.items():
-        if b"PRIVATE KEY-----" in content:
+        if (not name.startswith("setup-deps/") and b"PRIVATE KEY-----" in content) or re.search(
+                rb"(?m)^-----BEGIN [A-Z ]*PRIVATE KEY-----\r?\n[A-Za-z0-9+/=]{20,}", content):
             parser.error("Private key material detected in " + name)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

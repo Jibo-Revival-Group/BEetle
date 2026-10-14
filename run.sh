@@ -209,6 +209,7 @@ for file in shofel2_t124 intermezzo.bin dfu_stage2.bin; do
 done
 
 say 'Packaging the toolkit.'
+python3 "$repo_dir/scripts/install_setup_deps.py"
 mkdir -p -- "$(dirname -- "$package")"
 package_stage_dir=$(mktemp -d "$(dirname -- "$package")/.jibo-package.XXXXXXXX")
 staged_package=$package_stage_dir/jibo-dfu.pyz
