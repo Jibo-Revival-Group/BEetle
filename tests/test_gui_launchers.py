@@ -120,6 +120,23 @@ def test_desktop_launcher_is_valid_and_passes_its_path_as_argument():
     assert "run-gui.sh" in entry["Exec"]
 
 
+def test_desktop_launcher_runs_directly_from_terminal_with_spaces(tmp_path):
+    repo = tmp_path / "repository with spaces"
+    repo.mkdir()
+    desktop = repo / "BEetle.desktop"
+    shutil.copy2(ROOT / desktop.name, desktop)
+    trace = tmp_path / "trace"
+    (repo / "run-gui.sh").write_text(
+        '#!/bin/bash\ncd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1\n'
+        'printf "%s\\n" "$PWD" "$@" > "$JIBO_TEST_TRACE"\n')
+    result = subprocess.run([str(desktop), "argument with spaces", "--example"],
+                            cwd=tmp_path,
+                            env={**os.environ, "JIBO_TEST_TRACE": str(trace)},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert trace.read_text().splitlines() == [str(repo), "argument with spaces", "--example"]
+
+
 def test_desktop_exec_runs_through_real_gio_parser_with_spaces(tmp_path):
     pytest.importorskip("gi")
     Gio = pytest.importorskip("gi.repository.Gio", reason="GObject introspection is unavailable")

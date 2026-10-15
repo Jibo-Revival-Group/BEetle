@@ -1,3 +1,4 @@
+#!/usr/bin/env -S bash -c 'exec /bin/bash "$(dirname -- "$0")/run-gui.sh" "$@"'
 [Desktop Entry]
 Type=Application
 Name=BEetle — 5x1 Setup Toolkit

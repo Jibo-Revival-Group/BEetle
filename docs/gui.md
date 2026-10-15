@@ -22,7 +22,8 @@ setup, not permission to flash a robot: device writes have a separate review.
   path, including folders with spaces. It requests a terminal for `sudo`,
   initial-build output and fallback messages. Some file managers require
   **Allow Launching**, **Trust**, or executable permission; copying it away
-  from the toolkit is not supported. `./run-gui.sh` is also available.
+  from the toolkit is not supported. From a terminal, `./BEetle.desktop`
+  and `./run-gui.sh` both launch the GUI.
 - **Windows:** this uses the same WSL 2 / usbipd USB handoff as the TUI, not a
   native Windows DFU driver. WSLg displays the Linux Tk window on Windows.
   Install WSL/Ubuntu and usbipd-win as described in the README. Run
