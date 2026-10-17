@@ -442,3 +442,39 @@ def test_bundled_msi_reviews_hashes_publishers_and_exit_codes():
                             capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'PASS:' in result.stdout
+
+
+@pytest.mark.parametrize("packages", [
+    ("libtcl8.6", "libtk8.6"),
+    ("libtcl8.6t64", "libtk8.6t64"),
+    ("tcl8.6", "tk8.6"),
+])
+def test_linux_notices_accept_shared_libraries_without_cli_packages(tmp_path, packages):
+    module = load_script("build")
+    docs, licenses = tmp_path / "doc", tmp_path / "licenses"
+    licenses.mkdir()
+    for name in (*packages, "libx11-6"):
+        directory = docs / name
+        directory.mkdir(parents=True)
+        (directory / "copyright").write_text("Original " + name + " terms")
+    target = module.system_library_notices(licenses, docs)
+    for name in (*packages, "libx11-6"):
+        assert (target / (name + ".txt")).read_text() == "Original " + name + " terms"
+
+
+@pytest.mark.parametrize("missing", ["libtcl8.6", "libtk8.6"])
+def test_linux_notices_still_require_both_original_license_texts(tmp_path, missing):
+    module = load_script("build")
+    docs, licenses = tmp_path / "doc", tmp_path / "licenses"
+    licenses.mkdir()
+    for name in ("libtcl8.6", "libtk8.6"):
+        directory = docs / name
+        directory.mkdir(parents=True)
+        if name != missing:
+            (directory / "copyright").write_text("Original terms")
+    # A leftover output cannot substitute for a missing installed notice.
+    target = licenses / "system-library-notices"
+    target.mkdir()
+    (target / (missing + ".txt")).write_text("Stale terms")
+    with pytest.raises(RuntimeError, match="Missing Tcl/Tk license"):
+        module.system_library_notices(licenses, docs)

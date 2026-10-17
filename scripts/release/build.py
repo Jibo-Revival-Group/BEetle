@@ -264,20 +264,30 @@ def notices(licenses, entry, revision):
         if not terms:
             raise RuntimeError('Tcl/Tk license texts are missing')
     else:
-        # Copyright notices for all potentially collected X11/Tk/Python system libs.
-        target = licenses / 'system-library-notices'
-        target.mkdir()
-        for path in Path('/usr/share/doc').glob('*/copyright'):
-            if path.is_file():
-                shutil.copy2(path, target / (path.parent.name + '.txt'))
-        for package_name in ('tcl8.6', 'tk8.6'):
-            if not (target / (package_name + '.txt')).is_file():
-                raise RuntimeError('Missing Tcl/Tk license: ' + package_name)
+        system_library_notices(licenses)
     download('https://raw.githubusercontent.com/AppImage/type2-runtime/main/LICENSE', licenses / 'AppImage-runtime-LICENSE.txt')
     (licenses / 'BUILD-SOURCES.json').write_text(json.dumps({'revision': revision, 'sources': SOURCES,
         'python': sys.version, 'pyinstaller': PyInstaller.__version__,
         'ssh_dependencies': {name: importlib.metadata.version(name)
             for name in ('paramiko', 'cryptography', 'bcrypt', 'PyNaCl', 'cffi', 'pycparser')}}, indent=2) + '\n')
+
+
+def system_library_notices(licenses, doc_root=Path('/usr/share/doc')):
+    """Preserve Debian/Ubuntu notices, including library-only Tcl/Tk installs."""
+    target = Path(licenses) / 'system-library-notices'
+    target.mkdir(exist_ok=True)
+    for path in Path(doc_root).glob('*/copyright'):
+        if path.is_file():
+            shutil.copy2(path, target / (path.parent.name + '.txt'))
+    # python3-tk needs the shared libraries, not the optional tclsh/wish
+    # command packages. Accept their original notices without requiring the CLIs.
+    for component in ('tcl8.6', 'tk8.6'):
+        packages = (component, 'lib' + component, 'lib' + component + 't64')
+        if not any((Path(doc_root) / package / 'copyright').is_file() for package in packages):
+            raise RuntimeError('Missing Tcl/Tk license: ' + component +
+                               '; expected /usr/share/doc/{' + ','.join(packages) + '}/copyright')
+    return target
+
 
 
 def entry_build_env(prefix):
