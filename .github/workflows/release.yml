@@ -1,0 +1,96 @@
+name: BEetle native bundles
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-venv python3-tk libusb-1.0-0-dev gcc-arm-none-eabi binutils-arm-none-eabi pkg-config libfuse2 xvfb patchelf busybox nodejs
+          python -m venv .build-venv
+          .build-venv/bin/python -m pip install -r requirements-release.txt
+      - name: Regression tests
+        run: .build-venv/bin/python -m pytest -q
+      - name: Build and verify AppImage and Windows Linux payload
+        run: .build-venv/bin/python scripts/release/build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BEetle-linux-stage
+          path: release-out/
+          if-no-files-found: error
+
+  windows:
+    needs: linux
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BEetle-linux-stage
+          path: linux-stage
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Build and verify offline-capable single EXE
+        run: |
+          python -m pip install -r requirements-release.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/release/build.py --windows-payload linux-stage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest -q tests/test_release_builds.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BEetle-Windows-x64
+          path: release-out/
+          if-no-files-found: error
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build prerequisites
+        run: |
+          test "$(uname -m)" = '${{ matrix.architecture }}'
+          brew install --overwrite python@3.12 python-tk@3.12 pkg-config
+          "$(brew --prefix python@3.12)/bin/python3.12" -m venv .build-venv
+          .build-venv/bin/python -m pip install -r requirements-release.txt
+      - name: Build native app, ZIP and DMG
+        run: .build-venv/bin/python scripts/release/build.py --architecture '${{ matrix.architecture }}'
+      - name: Verify mounted app
+        run: |
+          mount="$RUNNER_TEMP/beetle-dmg"
+          mkdir -p "$mount"
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" release-out/*.dmg
+          codesign --verify --all-architectures --deep --strict "$mount/BEetle.app"
+          "$mount/BEetle.app/Contents/MacOS/BEetle" --self-check
+          "$mount/BEetle.app/Contents/MacOS/BEetle" --gui-smoke
+          hdiutil detach "$mount"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BEetle-macOS-${{ matrix.architecture }}
+          path: release-out/
+          if-no-files-found: error

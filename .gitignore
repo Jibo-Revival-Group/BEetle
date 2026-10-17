@@ -32,3 +32,8 @@ __pycache__/
 # Local setup records and dependencies
 beetle-5x1-session*.json
 .setup-deps/
+
+# Native release outputs
+release-out/
+.build-venv/
+*.spec

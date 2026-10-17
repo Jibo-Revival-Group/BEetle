@@ -1,0 +1,10 @@
+# Build with Python 3.12 on the target OS.
+pyinstaller==6.16.0
+paramiko==4.0.0
+cryptography==46.0.3
+bcrypt==5.0.0
+PyNaCl==1.6.0
+cffi==2.0.0
+pycparser==2.23
+pytest==8.4.2
+pillow==11.3.0

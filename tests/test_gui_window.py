@@ -301,3 +301,29 @@ def test_wizard_is_default_and_advanced_tools_are_available(window):
     window.root.update()
     assert window.page_name == "home"
     assert "set-mode" in window.action_rows
+
+
+def test_release_signals_ready_after_the_main_window_maps(tmp_path, monkeypatch):
+    import jibo_gui as gui
+    receipt = tmp_path / "ready"
+    monkeypatch.setenv("JIBO_GUI_READY_FILE", str(receipt))
+    actual_window = gui.ToolkitWindow
+    observed = {}
+    def create_window(root, controller):
+        window = actual_window(root, controller)
+        deadline = time.monotonic() + 5
+        def finish_when_ready():
+            if receipt.exists():
+                observed["visible"] = bool(root.winfo_viewable())
+                window.close()
+            elif time.monotonic() > deadline:
+                observed["timeout"] = True
+                window.close()
+            else:
+                root.after(20, finish_when_ready)
+        root.after(20, finish_when_ready)
+        return window
+    monkeypatch.setattr(gui, "ToolkitWindow", create_window)
+    assert gui.main(FakeApi("none")) == 0
+    assert observed == {"visible": True}
+    assert receipt.read_text() == "ready\n"

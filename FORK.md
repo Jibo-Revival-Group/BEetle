@@ -15,3 +15,9 @@ BEach, downloaded at runtime, and is never embedded in BEetle packages.
 Phoenix enrollment options are replaced by the new session-based interface.
 The upstream boot diagnostic retains its internal legacy path and pinned assets
 for compatibility. It performs no Phoenix enrollment.
+
+Native release adapters are derived from the updated upstream revision
+`8f757eedd7cec108508b306b2eb123d5646a354a`. They build BEetle AppImage,
+macOS app/DMG and Windows EXE bundles. The Windows EXE additionally carries its
+Ubuntu image, WSL and usbipd installers for setup without dependency downloads.
+Build instructions and limitations are in [docs/release.md](docs/release.md).
