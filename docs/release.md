@@ -144,3 +144,23 @@ Cross-platform release builds and offline first-run setup must be exercised
 on their respective operating systems. Robot DFU, SSH, PM, firmware and reboot
 behavior still need live hardware acceptance; mocked release tests cannot
 establish those results.
+
+## CI troubleshooting
+
+If Windows PowerShell reports that built-in commands such as `Get-FileHash`
+are missing, ensure the updated `windows_launcher.py` and release tests are
+present. Python children of PowerShell 7 can inherit its incompatible module
+paths; the launcher removes `PSModulePath` only from its Windows PowerShell
+child's environment so that 5.1 constructs the correct paths. See
+[Microsoft's module-path documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath#starting-windows-powershell-from-powershell-7).
+
+The macOS workflow uploads the built app ZIP and DMG before testing the mounted
+DMG. `verify_macos.py` verifies the disk image, retries transient attach/detach
+resource errors up to five times, and checks the mounted app's signature,
+self-check and GUI startup. Invalid images and app failures still fail the job.
+The mountpoint is unique per invocation and is detached even when an app check
+fails. If mounting remains unavailable on a runner, its already checked app ZIP
+is still available in the workflow's artifacts.
+
+After updating these files on GitHub, start a new workflow run on the updated
+branch. Rerunning an older run keeps its original source revision.

@@ -421,7 +421,8 @@ def test_windows_scripts_parse_without_running_bootstrap():
     for name in ('bootstrap.ps1', 'console.ps1', 'run.ps1'):
         path = ROOT / 'scripts/release' / name
         command = "[scriptblock]::Create([IO.File]::ReadAllText('" + str(path).replace("'", "''") + "')) | Out-Null"
-        subprocess.run([shell, '-NoProfile', '-NonInteractive', '-Command', command], check=True)
+        env = load_script('windows_launcher').windows_powershell_environment()
+        subprocess.run([shell, '-NoProfile', '-NonInteractive', '-Command', command], check=True, env=env)
 
 
 def test_workflow_builds_all_formats_without_publishing():
@@ -440,7 +441,8 @@ def test_bundled_msi_reviews_hashes_publishers_and_exit_codes(shell_name):
         pytest.skip(shell_name + ' not installed; Windows CI runs both shells')
     result = subprocess.run([shell, '-NoProfile', '-NonInteractive', '-File',
                              str(ROOT / 'scripts/release/test-offline.ps1')],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True,
+                            env=load_script('windows_launcher').windows_powershell_environment())
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'PASS:' in result.stdout
 
@@ -479,3 +481,111 @@ def test_linux_notices_still_require_both_original_license_texts(tmp_path, missi
     (target / (missing + ".txt")).write_text("Stale terms")
     with pytest.raises(RuntimeError, match="Missing Tcl/Tk license"):
         module.system_library_notices(licenses, docs)
+
+
+@pytest.mark.parametrize("key", ["PSModulePath", "PSMODULEPATH", "psmodulepath"])
+def test_windows_powershell_child_rebuilds_module_path_without_changing_parent(monkeypatch, key):
+    module = load_script("windows_launcher")
+    monkeypatch.setenv(key, "PowerShell-7-only-modules")
+    monkeypatch.setenv("SystemRoot", "original-windows-root")
+    child = module.windows_powershell_environment()
+    assert not any(name.upper() == "PSMODULEPATH" for name in child)
+    assert child["SystemRoot"] == "original-windows-root"
+    assert os.environ[key] == "PowerShell-7-only-modules"
+
+
+def test_packaged_windows_launcher_passes_clean_environment_to_powershell(tmp_path, monkeypatch):
+    import hashlib
+    module = load_script("windows_launcher")
+    (tmp_path / "payload.tar.gz").write_bytes(b"fixture payload")
+    (tmp_path / "payload.sha256").write_text(hashlib.sha256(b"fixture payload").hexdigest())
+    (tmp_path / "revision.txt").write_text("a" * 40)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.setenv("PSModulePath", "PowerShell-7-only-modules")
+    monkeypatch.setattr(module, "verify_offline_dependencies", lambda root: None)
+    calls = []
+    monkeypatch.setattr(module.subprocess, "call",
+                        lambda command, **kwargs: calls.append((command, kwargs)) or 0)
+    assert module._main([]) == 0
+    command, options = calls[0]
+    assert command[0] == "powershell.exe"
+    assert not any(key.upper() == "PSMODULEPATH" for key in options["env"])
+    assert os.environ["PSModulePath"] == "PowerShell-7-only-modules"
+
+
+def test_macos_transient_mount_failure_retries_then_runs_all_checks_and_detaches(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    module = load_script("verify_macos")
+    image = tmp_path / "release.dmg"
+    image.write_bytes(b"fixture")
+    calls, delays = [], []
+    attempts = 0
+    def run(command, **kwargs):
+        nonlocal attempts
+        calls.append(command)
+        if command[:2] == ["hdiutil", "attach"]:
+            attempts += 1
+            if attempts == 1:
+                return SimpleNamespace(returncode=35, stdout="",
+                                       stderr="hdiutil: attach failed - Resource temporarily unavailable")
+            mount = Path(command[command.index("-mountpoint") + 1])
+            (mount / "BEetle.app").mkdir()
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+    monkeypatch.setattr(module.subprocess, "run", run)
+    monkeypatch.setattr(module.time, "sleep", delays.append)
+    module.verify_dmg(image, temp_root=tmp_path)
+    assert attempts == 2 and delays == [1]
+    assert calls[0][:2] == ["hdiutil", "verify"]
+    assert any(command[0] == "codesign" for command in calls)
+    assert any(command[-1] == "--self-check" for command in calls)
+    assert any(command[-1] == "--gui-smoke" for command in calls)
+    assert calls[-1][:2] == ["hdiutil", "detach"]
+    assert not Path(calls[-1][-1]).parent.exists()
+
+
+@pytest.mark.parametrize("message,expected_attempts", [
+    ("Resource temporarily unavailable", 5),
+    ("Resource busy", 5),
+    ("image not recognized", 1),
+])
+def test_macos_mount_retries_are_bounded_and_do_not_ignore_invalid_images(
+        monkeypatch, message, expected_attempts):
+    from types import SimpleNamespace
+    module = load_script("verify_macos")
+    calls, delays = [], []
+    def run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=1, stdout="", stderr=message)
+    monkeypatch.setattr(module.subprocess, "run", run)
+    monkeypatch.setattr(module.time, "sleep", delays.append)
+    with pytest.raises(subprocess.CalledProcessError):
+        module.retry_hdiutil(["attach", "fixture.dmg"])
+    assert len(calls) == expected_attempts
+    assert len(delays) == expected_attempts - 1
+
+
+def test_macos_app_validation_failure_still_detaches_its_mount(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    module = load_script("verify_macos")
+    image = tmp_path / "release.dmg"
+    image.write_bytes(b"fixture")
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        if command[:2] == ["hdiutil", "attach"]:
+            mount = Path(command[command.index("-mountpoint") + 1])
+            (mount / "BEetle.app").mkdir()
+        if command[0] == "codesign":
+            raise subprocess.CalledProcessError(1, command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+    monkeypatch.setattr(module.subprocess, "run", run)
+    with pytest.raises(subprocess.CalledProcessError):
+        module.verify_dmg(image, temp_root=tmp_path)
+    assert calls[-1][:2] == ["hdiutil", "detach"]
+    assert not any(command[-1] == "--self-check" for command in calls)
+
+
+def test_macos_workflow_uploads_verified_app_bundle_before_mount_check():
+    workflow = (ROOT / ".github/workflows/release.yml").read_text().split("  macos:", 1)[1]
+    assert workflow.index("actions/upload-artifact@v4") < workflow.index("name: Verify mounted app")
+    assert "scripts/release/verify_macos.py" in workflow

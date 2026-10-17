@@ -49,9 +49,9 @@ jobs:
         run: |
           python -m pip install -r requirements-release.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/release/build.py --windows-payload linux-stage
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q tests/test_release_builds.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/release/build.py --windows-payload linux-stage
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
@@ -80,17 +80,10 @@ jobs:
           .build-venv/bin/python -m pip install -r requirements-release.txt
       - name: Build native app, ZIP and DMG
         run: .build-venv/bin/python scripts/release/build.py --architecture '${{ matrix.architecture }}'
-      - name: Verify mounted app
-        run: |
-          mount="$RUNNER_TEMP/beetle-dmg"
-          mkdir -p "$mount"
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" release-out/*.dmg
-          codesign --verify --all-architectures --deep --strict "$mount/BEetle.app"
-          "$mount/BEetle.app/Contents/MacOS/BEetle" --self-check
-          "$mount/BEetle.app/Contents/MacOS/BEetle" --gui-smoke
-          hdiutil detach "$mount"
       - uses: actions/upload-artifact@v4
         with:
           name: BEetle-macOS-${{ matrix.architecture }}
           path: release-out/
           if-no-files-found: error
+      - name: Verify mounted app
+        run: .build-venv/bin/python scripts/release/verify_macos.py 'release-out/BEetle-macOS-${{ matrix.architecture }}.dmg'

@@ -1,11 +1,21 @@
 """One-file Windows launcher; embeds, but does not rebuild, the Linux payload."""
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
 import sys
 import tarfile
+
+
+def windows_powershell_environment():
+    """Let PowerShell 5.1 rebuild its own module path after a pwsh/Python parent.
+
+    https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath
+    """
+    return {key: value for key, value in os.environ.items()
+            if key.upper() != "PSMODULEPATH"}
 
 
 def verify_offline_dependencies(root):
@@ -107,7 +117,8 @@ def _main(args):
     return subprocess.call(['powershell.exe', '-NoProfile', '-NonInteractive', *window,
                             '-ExecutionPolicy', 'Bypass', '-File', str(root / 'bootstrap.ps1'),
                             '-PayloadRoot', str(root)] + args,
-                           creationflags=0 if visible else 0x08000000)
+                           creationflags=0 if visible else 0x08000000,
+                           env=windows_powershell_environment())
 
 
 def run():
