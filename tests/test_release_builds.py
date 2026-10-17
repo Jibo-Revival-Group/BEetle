@@ -432,11 +432,12 @@ def test_workflow_builds_all_formats_without_publishing():
     assert 'gh release' not in source and 'contents: write' not in source
 
 
-def test_bundled_msi_reviews_hashes_publishers_and_exit_codes():
+@pytest.mark.parametrize("shell_name", ["powershell.exe", "pwsh"])
+def test_bundled_msi_reviews_hashes_publishers_and_exit_codes(shell_name):
     import shutil
-    shell = shutil.which('powershell.exe') or shutil.which('pwsh')
+    shell = shutil.which(shell_name)
     if not shell:
-        pytest.skip('PowerShell not installed; Windows CI runs this check')
+        pytest.skip(shell_name + ' not installed; Windows CI runs both shells')
     result = subprocess.run([shell, '-NoProfile', '-NonInteractive', '-File',
                              str(ROOT / 'scripts/release/test-offline.ps1')],
                             capture_output=True, text=True)

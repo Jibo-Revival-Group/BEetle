@@ -10,10 +10,10 @@ foreach ($definition in $ast.FindAll({ param($node) $node -is [Management.Automa
 }
 $originalAdmin = (Get-Item Function:Invoke-ApprovedAdmin).ScriptBlock
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) ('beetle-offline-test-' + [guid]::NewGuid().ToString('N'))
-$previousSystemRoot = $env:SystemRoot
 try {
     New-Item -ItemType Directory -Path $testRoot | Out-Null
-    $env:SystemRoot = $testRoot
+    # Keep SystemRoot intact: Windows PowerShell resolves built-in modules
+    # through it. Admin calls are mocked below, so no OS path needs replacing.
     $installer = Join-Path $testRoot 'wsl.msi'
     [IO.File]::WriteAllText($installer, 'fixture installer')
     $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
@@ -63,6 +63,5 @@ try {
     if (-not $blocked) { throw 'MSI failure was hidden.' }
     Write-Output 'PASS: bundled MSI hash, publisher, signature, reboot and failure handling; no installers run.'
 } finally {
-    $env:SystemRoot = $previousSystemRoot
     Remove-Item -LiteralPath $testRoot -Recurse -Force
 }
