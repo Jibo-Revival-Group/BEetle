@@ -484,14 +484,20 @@ def test_linux_notices_still_require_both_original_license_texts(tmp_path, missi
 
 
 @pytest.mark.parametrize("key", ["PSModulePath", "PSMODULEPATH", "psmodulepath"])
-def test_windows_powershell_child_rebuilds_module_path_without_changing_parent(monkeypatch, key):
+@pytest.mark.parametrize("root_key", ["SystemRoot", "SYSTEMROOT"])
+def test_windows_powershell_child_rebuilds_module_path_without_changing_parent(
+        monkeypatch, key, root_key):
+    from types import SimpleNamespace
     module = load_script("windows_launcher")
-    monkeypatch.setenv(key, "PowerShell-7-only-modules")
-    monkeypatch.setenv("SystemRoot", "original-windows-root")
+    # Windows uppercases os.environ keys; Unix keeps their original spelling.
+    # Exercise both on every host without changing any real OS environment.
+    parent = {key: "PowerShell-7-only-modules",
+              root_key: "original-windows-root", "PATH": "original-path"}
+    original = parent.copy()
+    monkeypatch.setattr(module, "os", SimpleNamespace(environ=parent))
     child = module.windows_powershell_environment()
-    assert not any(name.upper() == "PSMODULEPATH" for name in child)
-    assert child["SystemRoot"] == "original-windows-root"
-    assert os.environ[key] == "PowerShell-7-only-modules"
+    assert child == {root_key: "original-windows-root", "PATH": "original-path"}
+    assert parent == original
 
 
 def test_packaged_windows_launcher_passes_clean_environment_to_powershell(tmp_path, monkeypatch):
