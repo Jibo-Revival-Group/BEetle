@@ -1,90 +1,93 @@
-# Set up with 5x1
+# Guided setup and external PM
 
-BEetle prepares Jibo over USB and completes installation over Wi-Fi/SSH. It
-uses hosted BEefy and BEaker without Phoenix enrollment or an account portal.
-OOBE robots finish in normal mode with BEam; the original app/QR setup is bypassed.
+BEetle opens a guided wizard. Advanced recovery tools remain available from the
+welcome page. The GUI, TUI and `setup-5x1` CLI use the same flow.
 
-## Start
+1. Connect Jibo using a micro-USB data cable. Follow the wizard's RCM instructions;
+   it detects RCM and loads the RAM DFU program after review.
+2. Save rollback backups and record the live original mode before changing it.
+   A fresh var snapshot prevents older reused backups from misclassifying OOBE. Enter
+   Wi-Fi details. The wizard writes `int-developer`, Wi-Fi and the boot-screen
+   IP display in one full var transaction with rollback and readback verification.
+3. Power-cycle out of recovery. Wait for Wi-Fi and read the IP on Jibo's screen.
+   Some unrecognized stock renderer versions retain the stock screen; use your
+   router's device list if the diagnostic cannot display an IP on that version.
+4. Enter the displayed IP and SSH credentials (defaults `root` /
+   `jibo`). Accept the host fingerprint. Identity is compared with the USB backup
+   through read-only SFTP; the installer uploads no worker or scripts.
+5. Review and run the appropriate external PM sequence below. PM owns provisioning,
+   installation, configuration, firmware, normal mode and reboot. Its output
+   streams into the wizard.
 
-Use `BEetle.desktop`, `BEetle.command`, or the existing Windows GUI launcher.
-Enter RCM/APX and choose **Enter DFU with ShofEL** first. Then choose **Set up
-with 5x1**. The sidebar action also lets you resume after USB is disconnected.
+The wizard runs normal PM for provisioned robots. Robots originally in OOBE
+(`oobe` or the intermediate `identified` state) use the GitHub OOBE script.
+It does not guess OOBE from missing credentials or the temporary
+`int-developer` mode.
 
-For source launches on macOS, or if SSH dependencies are unavailable, run
-`python3 scripts/install_setup_deps.py` using the same Python as the launcher.
-The Linux/WSL package builder includes these dependencies locally. Existing
-offline DFU operations do not require SSH dependencies.
+## Exact SSH sequence
 
-The CLI uses the same controller and explicit reviews:
+For provisioned robots:
 
 ```sh
+jibo-mount --rw
+curl -fsSL -k https://scripts.5x1.com/pm -o /tmp/pm.sh
+chmod +x /tmp/pm.sh
+sh /tmp/pm.sh
+```
+
+For OOBE, BEetle changes only the curl URL:
+
+```sh
+jibo-mount --rw
+curl -fsSL -k https://raw.githubusercontent.com/Jibo-Revival-Group/BEach/master/PM/post-oobe-mod.sh -o /tmp/pm.sh
+chmod +x /tmp/pm.sh
+sh /tmp/pm.sh
+```
+
+Those are the only SSH shell commands the wizard executes. They are sent
+individually, in order, without prefixes, wrappers or added commands. A failed
+command stops the sequence. No PM code, CA bundle, BEam archive, provisioning API
+client, OTA installer or firmware worker is embedded in the BEetle package.
+
+The OOBE script is maintained separately in `BEach/PM/post-oobe-mod.sh`. Its
+GitHub URL tracks BEach's `master` branch. BEetle itself does not publish the
+script.
+
+## Sessions and recovery
+
+```sh
+python3 scripts/install_setup_deps.py
 python3 jibo_dfu.py setup-5x1 --session ~/Jibo-Backups/beetle-5x1-session.json
 ```
 
-Use a new session filename for a different robot. Keep Jibo powered and allow
-space for backups of var, both rootfs slots, services and skills (roughly a full
-user-area image). The actual BEam archive is about 513 MiB and expands to about
-1.12 GiB. BEetle stages it on `/opt` and checks available space first.
+Use a separate session for each robot. Sessions store the original OOBE mode,
+identity, accepted host fingerprint, backup references and progress. Passwords
+and cloud credential secrets are not stored. Keep space for var, both rootfs
+slots, services and skills backups. Those backups contain private robot data.
 
-## Sequence
+The session also records `current_var_backup`, the manifest for that fresh
+pre-change var snapshot, alongside the reusable partition backup set.
 
-1. Save robot-bound partition backups, inspect factory identity/calibration and
-   credentials, then configure `int-developer` mode and Wi-Fi. Unsupported fast
-   file layouts use the reviewed full-var transfer with readback verification.
-2. Restart out of recovery mode, find the IP in your router, and connect over
-   SSH. Defaults are `root` / `jibo`; both can be changed. Accept the displayed
-   host fingerprint. Robot identity and calibration must match the USB backup.
-3. Preserve credential keys, or provision missing keys through BEefy's prepared
-   OOBE protocol. Configure `api.5x1.com:443` and `http://joap.5x1.com:80`.
-4. Install the revision-pinned BEam archive, retaining unrelated custom skills,
-   Knowledge, custom eyes and music. Preserve a local copy of overwritten skills.
-5. Apply legacy TLS compatibility and the SSM pre-OTA backup skip. Use System
-   Manager's normal check/download/apply path for BEaker updates. Require a
-   successful download before apply; verify target versions after reboot and
-   reapply configuration replaced by services OTA.
-6. Run the established board-detecting BBFW updater, set normal mode, reboot,
-   and verify identity, calibration, installed versions, service processes,
-   endpoints, BEefy health reachability and OTA check. The active firewall init
-   script is removed, matching BEach bring-up, so SSH remains available.
+Older BEetle sessions retain the original mode and backups, but repeat USB
+preparation to install the IP display. Earlier preparation-only sessions resume
+at SSH to run normal PM. Completed PM sessions never rerun PM.
+Normal PM receives an SSH terminal so its existing `clear` command works without
+changing the four commands. If SSH drops during PM, the wizard requires the
+selected script's completion message before accepting the reboot. Without that
+message, the outcome remains unknown; a resume checks the OOBE receipt through
+SFTP for OOBE sessions and otherwise asks before retry.
+A disconnect is never treated as proof of successful installation by itself.
 
-The legacy compatibility path disables certificate rejection only in the known
-robot Node clients, as BEach does. Host downloads and provisioning use verified
-HTTPS. Unknown patch layouts stop setup with an actionable error.
+For filesystem rollback, enter recovery and use **Advanced recovery tools →
+More tools → Restore selected partitions** with the saved `backup_set`. A
+filesystem rollback does not undo body-controller firmware flashed by PM.
 
-## Resume and restore
+## Validation
 
-Reuse the same session file through the GUI, TUI or CLI. Its private JSON stores
-identity, calibration hashes, accepted host fingerprints, backup paths and
-completed stages. Wi-Fi/SSH passwords and cloud credential secrets are never
-stored in that session. Partition backups themselves contain private robot data.
+Tests exercise recovery entry, normal/OOBE routing, original-mode retention, mandatory
+IP display, exact command order, failed downloads, host-key acceptance/change,
+wrong robot identity, interrupted PM and the absence of embedded installation
+code. BEach separately tests its OOBE credential and factory-preservation stages
+on disposable trees. Live robot PM/reboot validation remains outstanding.
 
-Completed installations are skipped; configuration is reapplied after reconnect.
-If OTA was interrupted during apply, the requested target versions must be
-present before continuing. If they are absent, inspect the robot's update status
-and recover the failed update first. A changed SSH fingerprint or mismatched
-identity stops setup. A completed session can rerun verification.
-
-To undo filesystem changes, enter recovery and use **More tools → Restore
-selected partitions** with the session's `backup_set` path. Restore all modified
-partitions for a complete filesystem rollback. BBFW updates target the body
-controllers and are not undone by restoring eMMC partitions.
-
-## Validation status
-
-Automated tests cover credential-free and provisioned fixtures, malformed keys,
-server errors, host-key acceptance/change, wrong robot identity, cancellation,
-resume, OTA download failure and configuration replaced by OTA.
-
-Celeste was inspected read-only with e2fsprogs: active mode `oobe`, complete
-factory identity and all three camera calibration JSON files, credentials absent.
-Its filesystem uses `meta_bg` and contains non-extent inodes. A disposable var
-copy passed mode/Wi-Fi preparation and e2fsck with identity and calibration
-unchanged. The actual pinned archive was installed into a disposable tree,
-restoring all 49 relative links and preserving fixture user assets.
-
-These checks do not prove live conversation, body firmware, or reboot behavior.
-Full OOBE and provisioned hardware setup remains unverified. Linux GUI and
-cross-platform launcher tests are available; Windows/WSL and macOS hardware
-execution must be checked on those systems before release.
-
-![5x1 setup review](images/gui/setup.png)
+![External OOBE PM review](images/gui/setup.png)

@@ -292,3 +292,12 @@ def test_error_result_is_visibly_failed(window):
     window.show_outcome(core.Outcome("error", "write-var", "Action failed", ("Fake readback mismatch",)))
     window.root.update()
     assert window.page_name == "result" and window.controls["tone"] == "danger"
+
+
+def test_wizard_is_default_and_advanced_tools_are_available(window):
+    assert window.page_name == "wizard"
+    assert window.controls["primary"].cget("text") == "Start or resume setup"
+    window.controls["advanced"].invoke()
+    window.root.update()
+    assert window.page_name == "home"
+    assert "set-mode" in window.action_rows

@@ -7,8 +7,9 @@ The fork adds 5x1 branding and a shared USB-to-SSH setup workflow. Existing
 DFU command names, backup formats and loader pins are retained. No upstream
 robot assets or payload hashes are changed by rebranding.
 
-BEam bootstrap revision: `25d2b8cbf85b101aad3b2ab537a9c3f5a3b459ae`.
-Later updates come from BEaker's checksum-verified OTA catalog.
+The guided wizard sets int-developer mode, Wi-Fi and the IP display. It then
+runs the external PM command sequence, selecting the GitHub OOBE version for OOBE robots and normal PM for provisioned robots. PM is maintained in
+BEach, downloaded at runtime, and is never embedded in BEetle packages.
 
 `robot-ota-repoint.sh` now forwards to the shared 5x1 setup command; old
 Phoenix enrollment options are replaced by the new session-based interface.

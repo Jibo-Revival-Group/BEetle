@@ -142,7 +142,8 @@ def main():
     def capture(name):
         root.update()
         assert root.winfo_viewable() and not errors
-        assert not re.search(r"\bfake\b|\btest(?:ing)?\b|/tmp", visible_text(root), re.I)
+        visible = visible_text(root).replace("/tmp/pm.sh", "PM destination")
+        assert not re.search(r"\bfake\b|\btest(?:ing)?\b|/tmp", visible, re.I)
         path = out / (name + ".png")
         from PIL import ImageGrab
         x, y = root.winfo_rootx(), root.winfo_rooty()
@@ -171,8 +172,9 @@ def main():
             capture("ready")
             if args.setup:
                 assert window.setup_entry.winfo_viewable()
-                window.show_prompt(core.Prompt("confirm", "Prepare 5x1 setup",
-                    detail="Back up var, both rootfs slots, services and skills. Then configure developer mode and Wi-Fi, install BEam/BEnch, provision missing credentials, update body firmware and finish in normal mode. Keep power connected.",
+                import beetle_setup
+                window.show_prompt(core.Prompt("confirm", "Step 5 of 5 — Run external OOBE PM",
+                    detail="The original mode was OOBE. Run exactly these four SSH commands:\n\n" + "\n".join(beetle_setup.pm_commands(beetle_setup.OOBE_PM_URL)),
                     items=(controller.flows.MenuItem("cancel", "Cancel"), controller.flows.MenuItem("confirm", "Confirm")), initial="cancel"))
                 capture("setup")
                 window.show_home()

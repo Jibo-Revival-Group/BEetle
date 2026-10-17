@@ -2,7 +2,7 @@
 
 A local 5x1 fork of Paskooter’s Jibo DFU Mod Toolkit. Upstream history, licensing, loader pins, advanced tools and backup formats are retained; see [fork provenance](FORK.md).
 
-Choose **Set up with 5x1** to back up and prepare Jibo over USB, then install BEam/BEnch and connect hosted 5x1 services over Wi-Fi/SSH. OOBE robots finish in normal mode. See [setup and recovery](docs/setup-5x1.md).
+The app opens a guided wizard. Choose **Start or resume setup** to enter USB recovery, save backups, set `int-developer` mode and Wi-Fi, and show the IP on Jibo’s boot screen. It then runs normal PM over SSH for provisioned robots, or the external OOBE PM script from GitHub for OOBE robots. PM owns installation and reboot; its implementation is not embedded in the installer. See [setup and recovery](docs/setup-5x1.md).
 
 ```sh
 python3 scripts/install_setup_deps.py

@@ -483,7 +483,7 @@ class ToolkitWindow:
         root.bind_all("<Button-5>", self._wheel, add="+")
         root.bind("<F5>", lambda _event: self.refresh())
         root.bind("<Control-r>", lambda _event: self.refresh())
-        self.show_home()
+        self.show_wizard()
         self.render_state()
         controller.request_refresh()
         self._poll_job = root.after(self.POLL_MS, self._poll)
@@ -607,8 +607,8 @@ class ToolkitWindow:
         self.progress_title = tk.Label(page, text="Working", font=theme.title, bg=P["bg"],
                                        fg=P["text"], anchor="w")
         self.progress_title.pack(fill="x")
-        self._callout(page, "Keep the robot connected by USB and leave this window open "
-                      "until the operation finishes.", "info").pack(fill="x", pady=(14, 0))
+        self._callout(page, "Keep Jibo powered and leave this window open. USB is needed during "
+                      "recovery preparation; the wizard switches to Wi-Fi/SSH after reboot.", "info").pack(fill="x", pady=(14, 0))
         card = tk.Frame(page, bg=P["surface"], highlightthickness=1,
                         highlightbackground=P["border"])
         card.pack(fill="x", pady=(16, 0))
@@ -648,6 +648,23 @@ class ToolkitWindow:
         self.controls = {}
         self._show(name, frame)
         return frame
+
+    def show_wizard(self):
+        self.prompt = None
+        self._stop_progress()
+        page = self._new_page("wizard")
+        self._header(page, "Set up your Jibo", "Follow the steps from USB recovery to the post-mod script.")
+        for title, detail in (
+                ("1. Connect and back up", "The wizard helps you enter recovery and saves rollback backups."),
+                ("2. Prepare Wi-Fi and the IP display", "Set int-developer mode, restart, and read the IP on Jibo's screen."),
+                ("3. Run PM over SSH", "Run normal PM for provisioned robots, or the GitHub OOBE PM script for OOBE robots. PM handles installation and reboot.")):
+            self._callout(page, title + "\n" + detail).pack(fill="x", pady=(16, 0))
+        buttons = self._button_bar(page)
+        start = ttk.Button(buttons, text="Start or resume setup", style="Accent.TButton", command=self.show_setup)
+        start.pack(side="right")
+        advanced = ttk.Button(buttons, text="Advanced recovery tools", command=self.show_home)
+        advanced.pack(side="left")
+        self.controls = {"primary": start, "advanced": advanced}
 
     def show_home(self):
         self.prompt = None
@@ -712,6 +729,9 @@ class ToolkitWindow:
         self.status_port.configure(text=("USB port " + snap.port) if snap.port else "")
         self.refresh_button.state(["disabled"] if snap.busy else ["!disabled"])
         self.setup_entry.state(["disabled"] if snap.busy else ["!disabled"])
+        if self.page_name == "wizard":
+            enabled = snap.checked and not snap.busy and snap.readiness.state != "multiple"
+            self.controls["primary"].state(["!disabled"] if enabled else ["disabled"])
         self.note.configure(text=snap.note)
         if self.page_name == "home":
             self._render_actions(snap)

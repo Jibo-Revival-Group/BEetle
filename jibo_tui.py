@@ -770,7 +770,7 @@ class TerminalMenu:
 
 def _action_hint(key):
     hints = {
-        "setup-5x1": "Back up and prepare over USB, then install BEam/BEnch and connect 5x1 over Wi-Fi. Resume saved setup here.",
+        "setup-5x1": "Guided recovery, int-developer, Wi-Fi/IP display, then external PM (GitHub OOBE PM for OOBE robots). Resume saved setup here.",
         "enter-dfu-shofel": "Initializes the selected SDRAM profile and starts the RAM recovery loader from RCM/APX.",
         "probe-dfu-gpt": "Reads and checks the partition layout without writing eMMC.",
         "backup-var": "Read the robot's var partition and save one reusable local rollback image.",

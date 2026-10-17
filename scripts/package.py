@@ -119,12 +119,10 @@ def main():
 
     sources = {
         "beetle_setup.py": ROOT / "beetle_setup.py",
-        "beetle_robot.py": ROOT / "beetle_robot.py",
         "FORK.md": ROOT / "FORK.md",
         "requirements-setup.txt": ROOT / "requirements-setup.txt",
         "assets/5x1/logo.svg": ROOT / "assets/5x1/logo.svg",
         "assets/5x1/logo.png": ROOT / "assets/5x1/logo.png",
-        "assets/5x1/isrg-root-x1.pem": ROOT / "assets/5x1/isrg-root-x1.pem",
         "jibo_dfu.py": ROOT / "jibo_dfu.py",
         "jibo_dfu_bounded.py": ROOT / "jibo_dfu_bounded.py",
         "jibo_dfu_pipeline.py": ROOT / "jibo_dfu_pipeline.py",

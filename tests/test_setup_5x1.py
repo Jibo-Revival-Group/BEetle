@@ -1,272 +1,258 @@
-"""Setup safety and recovery tests; no robot or production cloud is contacted."""
+"""Guided preparation and exact external-PM handoff; no robot/network calls."""
 import hashlib
+import io
 import json
 from pathlib import Path
 from types import SimpleNamespace
-import zipfile
+import sys
 
 import pytest
 import beetle_setup as setup
-import beetle_robot as robot
 
 IDENTITY = {"name": "Fixture-Robot-Only", "serial_number": "BOJW000000000", "cpuid": "fixture-cpu", "wifi_mac": "00:11:22:33:44:55"}
-KEYS = {"accessKeyId": "fixture-access", "secretAccessKey": "fixture-secret", "extra": "preserve"}
+EXPECTED_OOBE = (
+    "jibo-mount --rw",
+    "curl -fsSL -k https://raw.githubusercontent.com/Jibo-Revival-Group/BEach/master/PM/post-oobe-mod.sh -o /tmp/pm.sh",
+    "chmod +x /tmp/pm.sh",
+    "sh /tmp/pm.sh",
+)
+
+EXPECTED_NORMAL = ("jibo-mount --rw", "curl -fsSL -k https://scripts.5x1.com/pm -o /tmp/pm.sh",
+                   "chmod +x /tmp/pm.sh", "sh /tmp/pm.sh")
 
 
-@pytest.fixture
-def filesystem(tmp_path, monkeypatch):
-    monkeypatch.setattr(robot, "ROOT", str(tmp_path))
-    def write(p, value):
-        target = tmp_path / p.lstrip("/")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(value) if isinstance(value, dict) else value)
-        return target
-    write("/var/jibo/identity.json", IDENTITY)
-    write("/var/jibo/mode.json", {"mode": "oobe"})
-    for name in robot.CALIBRATION:
-        write("/var/jibo/lps/" + name, {"fixture": name})
-    write("/usr/local/etc/jibo-jetstream-service.json", {"HubClient": {"keep": True}})
-    client = "/usr/local/bin/jibo-ssm/node_modules/@jibo/jibo-server-client/lib"
-    write(client + "/region_config.json", {"patterns": {"other": {"keep": True}}})
-    write(client + "/http/node.js", "var options = {rejectUnauthorized: true};")
-    write("/usr/local/bin/jibo-ssm/lib/manager.js", "this._backupHelper((bkError, maxError) => {")
-    write("/etc/ssl/certs/ca-certificates.crt", "original trust\n")
-    cert = Path(setup.__file__).parent / "assets/5x1/isrg-root-x1.pem"
-    write("/var/tmp/beetle-isrg-root-x1.pem", cert.read_text())
-    write("/opt/jibo/Jibo/Skills/@be/be/package.json", {"name": "@be/be", "version": "1.0.0"})
-    write("/etc/init.d/S21firewall", "fixture firewall")
-    return tmp_path, write
-
-
-def test_oobe_has_no_credentials_and_preserves_factory_data(filesystem):
-    before = robot.inspect()
-    assert not before["has_credentials"] and before["mode"] == "oobe"
-    robot.set_credentials({"credentials": KEYS})
-    after = robot.inspect()
-    assert after["identity"] == before["identity"] and after["calibration"] == before["calibration"]
-    assert robot.load("/var/jibo/credentials.json") == setup.credentials(KEYS)
-    assert robot.path("/var/jibo/credentials.json")
-    assert Path(robot.path("/var/jibo/credentials.json")).stat().st_mode & 0o777 == 0o600
-
-
-def test_preserve_existing_keys_even_if_new_keys_are_supplied(filesystem):
-    robot.set_credentials({"credentials": KEYS})
-    robot.set_credentials({"credentials": {"accessKeyId": "other", "secretAccessKey": "other"}})
-    assert robot.load("/var/jibo/credentials.json") == setup.credentials(KEYS)
-
-
-@pytest.mark.parametrize("bad", [None, {}, {"accessKeyId": "one"}, {"accessKeyId": "one", "secretAccessKey": ""}, []])
-def test_invalid_credentials_write_nothing(filesystem, bad):
-    with pytest.raises(robot.RobotError):
-        robot.set_credentials({"credentials": bad})
-    assert not Path(robot.path("/var/jibo/credentials.json")).exists()
-
-
-def test_configuration_is_repeatable_and_reapplies_after_ota(filesystem):
-    robot.set_credentials({"credentials": KEYS})
-    before = robot.inspect()
-    robot.configure()
-    bundle = robot.read("/etc/ssl/certs/ca-certificates.crt")
-    robot.configure()
-    assert robot.read("/etc/ssl/certs/ca-certificates.crt") == bundle
-    assert robot.load("/usr/local/etc/jibo-jetstream-service.json")["HubClient"]["keep"]
-    assert robot.inspect()["calibration"] == before["calibration"]
-    root, write = filesystem
-    write("/usr/local/etc/jibo-jetstream-service.json", {"HubClient": {}})
-    robot.configure()
-    assert robot.load("/usr/local/etc/jibo-jetstream-service.json")["HubClient"]["override"]["hub_hostname"] == setup.HUB
-    assert "Skipping pre-OTA backup" in robot.read("/usr/local/bin/jibo-ssm/lib/manager.js").decode()
-
-
-def test_unknown_patch_target_fails_before_configuration_writes(filesystem):
-    robot.set_credentials({"credentials": KEYS})
-    root, write = filesystem
-    before = robot.read("/usr/local/etc/jibo-jetstream-service.json")
-    write("/usr/local/bin/jibo-ssm/lib/manager.js", "unknown SSM")
-    with pytest.raises(robot.RobotError, match="Unsupported SSM"):
-        robot.configure()
-    assert robot.read("/usr/local/etc/jibo-jetstream-service.json") == before
-
-
-def test_bad_archive_checksum_changes_no_skills(filesystem):
-    root, write = filesystem
-    write("/opt/tmp/beetle-beam.zip", "bad bytes")
-    before = robot.read("/opt/jibo/Jibo/Skills/@be/be/package.json")
-    with pytest.raises(robot.RobotError, match="checksum"):
-        robot.install_beam({"sha256": "wrong", "revision": setup.BEAM_REVISION})
-    assert robot.read("/opt/jibo/Jibo/Skills/@be/be/package.json") == before
-
-
-def test_beam_install_preserves_custom_skills_and_libraries(filesystem):
-    root, write = filesystem
-    write("/opt/jibo/Knowledge/beacon/eye/custom.png", "custom eye")
-    write("/opt/tmp/jukebox-music/song.mp3", "music")
-    write("/opt/jibo/Jibo/Skills/custom/package.json", {"name": "custom", "version": "1"})
-    archive = root / "opt/tmp/beetle-beam.zip"
-    archive.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(archive, "w") as z:
-        z.writestr("BEam-" + setup.BEAM_REVISION + "/@be/be/package.json", json.dumps({"name": "@be/be", "version": "13.0.7"}))
-    robot.install_beam({"sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "revision": setup.BEAM_REVISION})
-    assert robot.load("/opt/jibo/Jibo/Skills/custom/package.json")["name"] == "custom"
-    assert robot.read("/opt/jibo/Knowledge/jukebox/music/song.mp3") == b"music"
-    assert robot.read("/opt/jibo/Knowledge/beacon/eye/custom.png") == b"custom eye"
-    assert robot.load("/opt/jibo/beetle-skills-before-5x1/@be/be/package.json")["version"] == "1.0.0"
-
-
-def test_provision_uses_prepared_token_and_real_credentials():
-    calls = []
-    def request(operation, body):
-        calls.append((operation, dict(body)))
-        return {"token": "fixture-token", "conversionReadiness": {"canWriteRobot": True}} if operation == "PrepareRobot" else KEYS
-    assert setup.provision(IDENTITY, "rollback", request) == setup.credentials(KEYS)
-    assert [p for p, body in calls] == ["PrepareRobot", "SetupRobot"]
-    assert calls[1][1]["token"] == "fixture-token"
-    assert calls[0][1]["rollbackSnapshotId"] == "rollback"
-
-
-def test_provision_stops_if_server_blocks_readiness():
-    with pytest.raises(setup.SetupError, match="blocked"):
-        setup.provision(IDENTITY, "rollback", lambda *args: {"token": "t", "conversionReadiness": {"canWriteRobot": False}})
+class FakeAPI:
+    MARKER = "jibo-ram-dfu"
+    def __init__(self, tmp_path, state="dfu"):
+        self.tmp_path, self.state, self.calls = tmp_path, state, []
+    def devices(self):
+        return [] if self.state == "none" else [{"port": "1-1", "state": self.state}]
+    def tool(self, name):
+        return name
+    def dfu_alternatives(self, *args):
+        return (self.MARKER, "var"), ""
+    def shofel_dfu_available(self):
+        return True
+    def enter_shofel_dfu(self, **kwargs):
+        self.calls.append(("enter-dfu", kwargs))
+        self.state = "dfu"
+        return {"port": "1-1"}
+    def backup_partitions(self, partitions, **kwargs):
+        self.calls.append(("backup", partitions))
+        entries = []
+        for name in partitions:
+            p = self.tmp_path / (name + ".img")
+            p.write_bytes(b"fixture")
+            entries.append({"name": name, "image": str(p), "size_bytes": 7,
+                            "sha256": hashlib.sha256(b"fixture").hexdigest()})
+        return {"manifest": "fixture-backup-set", "partitions": entries}
+    def backup_var(self, **kwargs):
+        assert kwargs["refresh"] is True
+        self.calls.append(("live-var", kwargs))
+        return {"image": str(self.tmp_path / "var.img"), "manifest": "current-var-manifest"}
+    def set_mode_wifi_live(self, *args, **kwargs):
+        self.calls.append(("usb", args, kwargs))
+        return {"status": "verified"} if kwargs["confirmation"]({}) else {"status": "cancelled"}
 
 
 class FakeSSH:
-    def __init__(self, report, fail=None):
-        self.report, self.fail, self.calls = report, fail, []
-    def upload_worker(self):
-        pass
-    def upload(self, *args):
-        pass
+    def __init__(self, robot=None, fail_command=None, completed=False):
+        self.robot = robot or IDENTITY
+        self.calls, self.fail_command, self.completed = [], fail_command, completed
+    def inspect(self):
+        self.calls.append("inspect")
+        return {"identity": self.robot, "mode": "normal" if self.completed else "int-developer", "pm_complete": self.completed}
+    def run_pm(self, commands, before_command):
+        for i, command in enumerate(commands):
+            before_command(i)
+            self.calls.append(command)
+            if i == self.fail_command:
+                raise setup.ConnectionLost("Connection interrupted.")
+        return {"completed": True}
     def close(self):
-        pass
-    def call(self, action, payload=None, **kwargs):
-        self.calls.append(action)
-        if action == self.fail:
-            raise setup.SetupError("fixture failure")
-        if action in ("inspect", "verify"):
-            return self.report
-        if action == "ota-check":
-            return {"ids": [], "updates": []}
-        return {}
+        self.calls.append("close")
 
 
-def controller(tmp_path, ssh, done=("backup", "usb"), confirm=lambda *args: True):
-    image = tmp_path / "backup.img"
-    image.write_bytes(b"fixture-backup")
-    session = setup.Session(tmp_path / "session.json")
-    session.data.update(identity=IDENTITY, calibration={"fixture": "hash"}, backup_set="fixture-set",
-        partitions=[{"image": str(image), "size_bytes": image.stat().st_size, "sha256": hashlib.sha256(image.read_bytes()).hexdigest()}], done=list(done))
-    session.save()
-    answers = iter(("fixture-host", "root", "password"))
-    def download(p):
-        Path(p).write_bytes(b"fixture archive")
-    return setup.SetupController(SimpleNamespace(), session.path, lambda *args, **kwargs: next(answers),
-        lambda *args: None, confirm, lambda *args: None, ssh_factory=lambda *args: ssh,
-        provisioner=lambda *args: KEYS, downloader=download, sleep=lambda *args: None)
+def controller(tmp_path, monkeypatch, mode="oobe", state="dfu", ssh=None, confirmations=True):
+    api, ssh = FakeAPI(tmp_path, state), ssh or FakeSSH()
+    monkeypatch.setattr(setup, "read_factory", lambda *args: (IDENTITY, mode, {"calibration": "hash"}))
+    answers = iter(("network", "wifi-secret", "wifi-secret", "192.0.2.4", "root", "ssh-secret"))
+    selections = iter((["retry"] if state == "none" else []) + ["protected"])
+    messages = []
+    reviews = []
+    def select(*args, **kwargs):
+        if api.state == "none":
+            api.state = "rcm"
+        return next(selections, None)
+    def confirm(title, detail):
+        reviews.append((title, detail))
+        return confirmations
+    c = setup.SetupController(api, tmp_path / "session.json", lambda *args, **kwargs: next(answers),
+        select, confirm, lambda *args: messages.append(args), ssh_factory=lambda *args: ssh)
+    return c, api, ssh, messages, reviews
 
 
-def report(**changes):
-    value = {"identity": dict(IDENTITY), "calibration": {"fixture": "hash"}, "has_credentials": False,
-             "versions": {"services": "13.0.3"}, "mode": "normal", "hub": setup.HUB, "ota": setup.OTA,
-             "services": True, "cloud": True}
-    value.update(changes)
-    return value
+@pytest.mark.parametrize("mode", ["oobe", "identified"])
+def test_oobe_runs_exact_four_commands_and_ip_display(tmp_path, monkeypatch, mode):
+    c, api, ssh, messages, reviews = controller(tmp_path, monkeypatch, mode=mode)
+    assert c.run()["status"] == "complete"
+    usb = next(call for call in api.calls if call[0] == "usb")
+    assert usb[1] == ("int-developer", "network", "wifi-secret", False)
+    assert usb[2]["network_status"] == "install"
+    assert c.session.data["current_var_backup"] == "current-var-manifest"
+    assert ssh.calls == ["inspect", *EXPECTED_OOBE, "close"]
+    assert any("screen" in " ".join(lines) for title, lines in messages)
+    assert "\n".join(EXPECTED_OOBE) in reviews[-1][1]
+    saved = c.session.path.read_text()
+    assert "wifi-secret" not in saved and "ssh-secret" not in saved
+    assert c.session.data["original_mode"] == mode and c.session.data["is_oobe"]
 
 
-def test_wrong_ssh_robot_prevents_installation(tmp_path):
-    wrong = dict(IDENTITY, cpuid="different")
-    ssh = FakeSSH(report(identity=wrong))
-    with pytest.raises(setup.SetupError, match="does not match"):
-        controller(tmp_path, ssh).run()
-    assert ssh.calls == ["inspect"]
-
-
-def test_failure_saves_stage_and_no_keys(tmp_path):
-    ssh = FakeSSH(report(), fail="beam")
-    c = controller(tmp_path, ssh)
-    with pytest.raises(setup.SetupError, match="stage beam"):
-        c.run()
-    raw = c.session.path.read_text()
-    assert "fixture-secret" not in raw and "password" not in raw
-    assert json.loads(raw)["stage"] == "beam"
-
-
-def test_resume_does_not_repeat_completed_install(tmp_path):
-    ssh = FakeSSH(report(has_credentials=True))
-    c = controller(tmp_path, ssh, ("backup", "usb", "credentials", "beam", "ota", "firmware", "normal"))
+@pytest.mark.parametrize("mode", ["normal", "developer", "int-developer"])
+def test_provisioned_robot_runs_exact_normal_pm(tmp_path, monkeypatch, mode):
+    c, api, ssh, messages, reviews = controller(tmp_path, monkeypatch, mode=mode)
     result = c.run()
-    assert result["status"] == "verified"
-    assert ssh.calls == ["inspect", "configure", "verify"]
-    assert c.session.data["stage"] == "complete"
+    assert result["mode"] == "normal" and result["status"] == "complete"
+    assert ssh.calls == ["inspect", *EXPECTED_NORMAL, "close"]
+    assert c.session.data["pm_url"] == setup.PM_URL
+    assert c.session.data["original_mode"] == mode and not c.session.data["is_oobe"]
+    assert "\n".join(EXPECTED_NORMAL) in reviews[-1][1]
 
 
-def test_cancel_before_configuration_is_persisted(tmp_path):
-    ssh = FakeSSH(report(has_credentials=True))
-    c = controller(tmp_path, ssh, ("backup", "usb", "credentials", "beam"), confirm=lambda *args: False)
+def test_wizard_handles_connect_then_rcm_entry(tmp_path, monkeypatch):
+    c, api, ssh, messages, reviews = controller(tmp_path, monkeypatch, state="none")
+    c.run()
+    entry = next(call for call in api.calls if call[0] == "enter-dfu")
+    assert entry[1] == {"port": "1-1", "confirm_meerkat_rev02": True}
+    assert api.calls.index(entry) < next(i for i, call in enumerate(api.calls) if call[0] == "backup")
+
+
+def test_wrong_robot_never_runs_pm(tmp_path, monkeypatch):
+    ssh = FakeSSH(dict(IDENTITY, cpuid="wrong"))
+    c, *_ = controller(tmp_path, monkeypatch, ssh=ssh)
+    with pytest.raises(setup.SetupError, match="does not match"):
+        c.run()
+    assert ssh.calls == ["inspect", "close"]
+
+
+def test_cancellation_before_backup_changes_nothing(tmp_path, monkeypatch):
+    c, api, ssh, *_ = controller(tmp_path, monkeypatch, confirmations=False)
     assert c.run()["status"] == "cancelled"
-    assert ssh.calls == ["inspect"]
+    assert not api.calls and not ssh.calls
 
 
-def test_changed_rollback_backup_blocks_resume(tmp_path):
-    ssh = FakeSSH(report())
-    c = controller(tmp_path, ssh)
-    Path(c.session.data["partitions"][0]["image"]).write_bytes(b"changed")
-    with pytest.raises(setup.SetupError, match="backup changed"):
+def test_interrupted_pm_is_not_automatically_repeated(tmp_path, monkeypatch):
+    c, api, ssh, *_ = controller(tmp_path, monkeypatch, ssh=FakeSSH(fail_command=3))
+    with pytest.raises(setup.SetupError, match="interrupted"):
         c.run()
-    assert not ssh.calls
+    assert c.session.data["pm_started"]
+    ssh.calls.clear()
+    answers = iter(("192.0.2.4", "root", "ssh-secret"))
+    c.text = lambda *args, **kwargs: next(answers)
+    c.select = lambda *args, **kwargs: "pause"
+    assert c.run()["status"] == "cancelled"
+    assert ssh.calls == ["inspect", "close"]
 
 
-def test_interrupted_ota_requires_target_versions(tmp_path):
-    ssh = FakeSSH(report(has_credentials=True))
-    c = controller(tmp_path, ssh)
-    c.session.data.update(awaiting_reboot=True, pending_updates={"updates": [{"subsystem": "services", "toVersion": "99.0.0"}]})
-    c.session.save()
-    with pytest.raises(setup.SetupError, match="target version"):
+def test_external_receipt_can_finish_interrupted_session(tmp_path, monkeypatch):
+    ssh = FakeSSH(fail_command=3)
+    c, *_ = controller(tmp_path, monkeypatch, ssh=ssh)
+    with pytest.raises(setup.SetupError):
         c.run()
-    assert ssh.calls == ["inspect"]
+    ssh.calls.clear()
+    ssh.completed = True
+    answers = iter(("192.0.2.4", "root", "ssh-secret"))
+    c.text = lambda *args, **kwargs: next(answers)
+    assert c.run()["status"] == "complete"
+    assert ssh.calls == ["inspect", "close"]
 
 
-def test_cli_and_gui_share_guided_setup(monkeypatch):
-    import jibo_tui
-    calls = []
-    monkeypatch.setattr(setup, "run_guided", lambda api, flows, port: calls.append((api, flows, port)) or {"status": "cancelled"})
-    api = object()
-    jibo_tui.execute_action(api, "setup-5x1", jibo_tui.Readiness("none", ()))
-    assert calls[0] == (api, jibo_tui, None)
-    assert "setup-5x1" in [i.key for i in jibo_tui.build_menu_items(jibo_tui.Readiness("none", ()))]
+def test_completed_wizard_does_not_repeat_pm(tmp_path, monkeypatch):
+    c, api, ssh, *_ = controller(tmp_path, monkeypatch)
+    c.run()
+    before = list(ssh.calls)
+    assert c.run()["status"] == "complete"
+    assert ssh.calls == before
 
 
-@pytest.mark.parametrize("body,success", [
-    (b'{"status":"working"}\n{"status":"finished"}\n', True),
-    (b'{"status":"failed","reason":"checksum does not match"}\n', False),
-    (b'{"status":"working"}\n', False),
-    (b'{"status":"finished","error":"fixture-secret"}\n', False),
-])
-def test_download_stream_must_finish_without_errors(monkeypatch, body, success):
-    class Response:
-        def read(self):
-            return body
-        def close(self):
-            pass
-    monkeypatch.setattr(robot, "urlopen", lambda *args, **kwargs: Response())
-    if success:
-        assert robot.ota_download({"ids": ["fixture"]}) == {"downloaded": True}
-    else:
-        with pytest.raises(robot.RobotError) as error:
-            robot.ota_download({"ids": ["fixture"]})
-        assert "fixture-secret" not in str(error.value)
+def test_original_oobe_survives_old_session_migration(tmp_path):
+    p = tmp_path / "session.json"
+    p.write_text(json.dumps({"schema": 1, "kind": "beetle-5x1-setup", "done": ["backup", "usb", "normal"],
+        "original_mode": "oobe", "fingerprints": {}}))
+    session = setup.Session(p)
+    assert session.data["schema"] == 2 and session.data["done"] == ["backup"]
+    assert session.data["original_mode"] == "oobe"
 
 
-def test_provision_network_error_is_sanitized(monkeypatch):
-    def fail(*args, **kwargs):
-        raise RuntimeError("fixture-secret")
-    monkeypatch.setattr(setup.urllib.request, "urlopen", fail)
-    with pytest.raises(setup.SetupError) as error:
-        setup.protocol_request("SetupRobot", {"secret": "fixture-secret"})
-    assert "fixture-secret" not in str(error.value)
+def test_standard_pm_sequence_is_unchanged():
+    assert setup.pm_commands(setup.PM_URL) == (
+        "jibo-mount --rw", "curl -fsSL -k https://scripts.5x1.com/pm -o /tmp/pm.sh", "chmod +x /tmp/pm.sh", "sh /tmp/pm.sh")
+    with pytest.raises(setup.SetupError):
+        setup.pm_commands("https://other.example/script")
+
+
+class Channel:
+    def __init__(self, output=b"PM output\n", status=0):
+        self.output, self.status, self.closed, self.commands = output, status, False, []
+    def set_combine_stderr(self, value):
+        assert value
+    def get_pty(self, **kwargs):
+        self.pty = kwargs
+    def exec_command(self, command):
+        self.commands.append(command)
+    def recv_ready(self):
+        return bool(self.output)
+    def recv(self, size):
+        value, self.output = self.output, b""
+        return value
+    def exit_status_ready(self):
+        return True
+    def recv_exit_status(self):
+        return self.status
+    def close(self):
+        self.closed = True
+
+
+def transport(channels):
+    pending = iter(channels)
+    return SimpleNamespace(is_active=lambda: True, open_session=lambda **kwargs: next(pending))
+
+
+def test_actual_ssh_transport_sends_only_exact_commands(capsys):
+    channels = [Channel(), Channel(), Channel(), Channel(output=b"5X1_OOBE_PM_COMPLETE\n")]
+    ssh = setup.SSH.__new__(setup.SSH)
+    ssh.client = SimpleNamespace(get_transport=lambda: transport(channels))
+    current = transport(channels)
+    ssh.client.get_transport = lambda: current
+    steps = []
+    ssh.run_pm(EXPECTED_OOBE, steps.append)
+    assert [channel.commands[0] for channel in channels] == list(EXPECTED_OOBE)
+    assert steps == [0, 1, 2, 3]
+    assert "PM output" in capsys.readouterr().out
+
+
+def test_failed_download_stops_before_chmod_or_pm():
+    channels = [Channel(), Channel(status=22), Channel(), Channel()]
+    ssh = setup.SSH.__new__(setup.SSH)
+    current = transport(channels)
+    ssh.client = SimpleNamespace(get_transport=lambda: current)
+    with pytest.raises(setup.SetupError, match="command 2 failed"):
+        ssh.run_pm(EXPECTED_OOBE, lambda index: None)
+    assert not channels[2].commands and not channels[3].commands
+
+
+def test_only_completion_marker_allows_disconnect_at_final_command():
+    channels = [Channel(), Channel(), Channel(), Channel(output=b"5X1_OOBE_PM_COMPLETE\n", status=-1)]
+    ssh = setup.SSH.__new__(setup.SSH)
+    current = transport(channels)
+    ssh.client = SimpleNamespace(get_transport=lambda: current)
+    with pytest.raises(setup.ConnectionLost) as result:
+        ssh.run_pm(EXPECTED_OOBE, lambda index: None)
+    assert result.value.completed
 
 
 @pytest.mark.parametrize("accept,known,success", [(True, None, True), (False, None, False), (True, "different", False)])
-def test_ssh_fingerprint_requires_acceptance_and_rejects_changes(tmp_path, monkeypatch, accept, known, success):
+def test_ssh_key_acceptance_and_changed_key_rejection(tmp_path, monkeypatch, accept, known, success):
     import paramiko
     class Key:
         def asbytes(self):
@@ -287,67 +273,98 @@ def test_ssh_fingerprint_requires_acceptance_and_rejects_changes(tmp_path, monke
     if known:
         s.data["fingerprints"]["fixture-host"] = known
     if success:
-        setup.SSH("fixture-host", "root", "fixture-secret", s, lambda *args: accept)
+        setup.SSH("fixture-host", "root", "ssh-secret", s, lambda *args: accept)
         assert s.data["fingerprints"]["fixture-host"].startswith("SHA256:")
-        assert "fixture-secret" not in s.path.read_text()
+        assert "ssh-secret" not in s.path.read_text()
     else:
         with pytest.raises(setup.SetupError):
-            setup.SSH("fixture-host", "root", "fixture-secret", s, lambda *args: accept)
-        assert s.data["fingerprints"].get("fixture-host") == known
+            setup.SSH("fixture-host", "root", "ssh-secret", s, lambda *args: accept)
 
 
-@pytest.mark.parametrize("quick", [True, False, "unsupported-layout"])
-def test_fresh_setup_runs_usb_to_normal_without_storing_secrets(tmp_path, monkeypatch, quick):
+def test_source_contains_no_embedded_pm_implementation():
+    source = Path(setup.__file__).read_text()
+    assert not Path(setup.__file__).with_name("beetle_robot.py").exists()
+    assert all(text not in source for text in ("jibo-bbfw-update", "rejectUnauthorized", "PrepareRobot", "SetupRobot", "beam.zip"))
+    assert not hasattr(setup.SSH, "upload") and not hasattr(setup.SSH, "upload_worker")
+
+
+def test_gui_and_tui_share_wizard(monkeypatch):
+    import jibo_tui
     calls = []
-    class LayoutError(Exception):
-        status = 3
-    class API:
-        FileRpcStatusError = LayoutError
-        def backup_partitions(self, partitions, **kwargs):
-            entries = []
-            for name in partitions:
-                p = tmp_path / (name + ".img")
-                p.write_bytes(b"fixture")
-                entries.append({"name": name, "image": str(p), "size_bytes": 7,
-                    "sha256": hashlib.sha256(b"fixture").hexdigest()})
-            return {"manifest": "fixture-backup-set", "partitions": entries}
-        def tool(self, name):
-            return name
-        def _live_var_file_available(self, *args):
-            return quick is not False
-        def set_mode_wifi_file_live(self, *args, **kwargs):
-            if quick == "unsupported-layout":
-                raise LayoutError()
-            calls.append("usb")
-            if not kwargs["confirmation"]({}):
-                return {"status": "cancelled"}
-            return {"status": "verified"}
-        def set_mode_wifi_live(self, *args, **kwargs):
-            calls.append("full-usb")
-            return {"status": "verified"} if kwargs["confirmation"]({}) else {"status": "cancelled"}
-    monkeypatch.setattr(setup, "read_factory", lambda *args: (IDENTITY, "oobe", {"fixture": "hash"}))
-    answers = iter(("network", "wifi-secret", "wifi-secret", "fixture-host", "root", "ssh-secret", "ssh-secret"))
-    ssh = FakeSSH(report())
-    def download(p):
-        with zipfile.ZipFile(p, "w") as z:
-            z.writestr("fixture/package.json", "{}")
-    c = setup.SetupController(API(), tmp_path / "session.json", lambda *args, **kwargs: next(answers),
-        lambda *args: "protected", lambda *args: True, lambda *args: None,
-        ssh_factory=lambda *args: ssh, provisioner=lambda *args: KEYS, downloader=download, sleep=lambda *args: None)
-    assert c.run()["status"] == "verified"
-    assert calls == (["usb"] if quick is True else ["full-usb"])
-    assert all(action in ssh.calls for action in ("credentials", "beam", "configure", "ota-check", "firmware", "normal", "reboot", "verify"))
-    raw = c.session.path.read_text()
-    assert all(secret not in raw for secret in ("wifi-secret", "ssh-secret", "fixture-secret"))
+    monkeypatch.setattr(setup, "run_guided", lambda api, flows, port: calls.append((api, flows, port)) or {"status": "cancelled"})
+    api = object()
+    jibo_tui.execute_action(api, "setup-5x1", jibo_tui.Readiness("none", ()))
+    assert calls == [(api, jibo_tui, None)]
 
 
-def test_archive_link_cannot_escape_staging_tree(filesystem):
-    root, write = filesystem
-    archive = root / "opt/tmp/beetle-beam.zip"
-    archive.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(archive, "w") as z:
-        entry = zipfile.ZipInfo("BEam-" + setup.BEAM_REVISION + "/escape")
-        entry.external_attr = 0o120777 << 16
-        z.writestr(entry, "../../outside")
-    with pytest.raises(robot.RobotError, match="escapes"):
-        robot.install_beam({"sha256": setup.file_sha256(archive), "revision": setup.BEAM_REVISION})
+def test_old_oobe_script_without_completion_is_not_accepted():
+    channels = [Channel() for _ in range(4)]
+    ssh = setup.SSH.__new__(setup.SSH)
+    current = transport(channels)
+    ssh.client = SimpleNamespace(get_transport=lambda: current)
+    with pytest.raises(setup.SetupError, match="did not report completion"):
+        ssh.run_pm(EXPECTED_OOBE, lambda index: None)
+
+
+def test_oobe_detection_uses_current_snapshot_instead_of_reused_baseline(tmp_path, monkeypatch):
+    c, api, ssh, *_ = controller(tmp_path, monkeypatch)
+    fresh = tmp_path / "fresh-var.img"
+    fresh.write_bytes(b"current OOBE fixture")
+    monkeypatch.setattr(api, "backup_var", lambda **kwargs: {"image": str(fresh), "manifest": "fresh-manifest"})
+    def inspect(api, backup):
+        assert next(p for p in backup["partitions"] if p["name"] == "var")["image"] == str(fresh)
+        return IDENTITY, "oobe", {"calibration": "hash"}
+    monkeypatch.setattr(setup, "read_factory", inspect)
+    c.run()
+    assert c.session.data["is_oobe"] and c.session.data["current_var_backup"] == "fresh-manifest"
+
+
+def test_preparation_only_session_resumes_at_ssh(tmp_path, monkeypatch):
+    c, api, ssh, *_ = controller(tmp_path, monkeypatch, mode="normal")
+    c.run()
+    c.session.data.update(pm_skipped=True, done=["backup", "usb", "complete"])
+    for key in ("pm_started", "pm_command", "pm_url"):
+        c.session.data.pop(key, None)
+    c.session.save()
+    c.session = setup.Session(c.session.path)
+    assert c.session.data["stage"] == "ssh"
+    assert "complete" not in c.session.data["done"]
+    api.calls.clear()
+    ssh.calls.clear()
+    answers = iter(("192.0.2.4", "root", "ssh-secret"))
+    c.text = lambda *args, **kwargs: next(answers)
+    assert c.run()["status"] == "complete"
+    assert not api.calls
+    assert ssh.calls == ["inspect", *EXPECTED_NORMAL, "close"]
+
+
+def test_stale_oobe_receipt_does_not_finish_interrupted_normal_pm(tmp_path, monkeypatch):
+    ssh = FakeSSH(fail_command=3)
+    c, *_ = controller(tmp_path, monkeypatch, mode="normal", ssh=ssh)
+    with pytest.raises(setup.SetupError):
+        c.run()
+    ssh.calls.clear()
+    ssh.completed = True
+    answers = iter(("192.0.2.4", "root", "ssh-secret"))
+    c.text = lambda *args, **kwargs: next(answers)
+    c.select = lambda *args, **kwargs: "pause"
+    assert c.run()["status"] == "cancelled"
+    assert ssh.calls == ["inspect", "close"]
+
+
+@pytest.mark.parametrize("output,completed", [
+    (setup.NORMAL_PM_COMPLETE.encode() + b"\r\n", True),
+    (b"5X1_OOBE_PM_COMPLETE\n", False),
+    (b"installation interrupted\n", False),
+])
+def test_normal_pm_terminal_and_reboot_completion(output, completed):
+    channels = [Channel(), Channel(), Channel(), Channel(output=output, status=-1)]
+    ssh = setup.SSH.__new__(setup.SSH)
+    current = transport(channels)
+    ssh.client = SimpleNamespace(get_transport=lambda: current)
+    with pytest.raises(setup.ConnectionLost) as result:
+        ssh.run_pm(EXPECTED_NORMAL, lambda index: None)
+    assert result.value.completed is completed
+    assert [channel.commands[0] for channel in channels] == list(EXPECTED_NORMAL)
+    assert channels[3].pty == {"term": "xterm"}
+    assert all(not hasattr(channel, "pty") for channel in channels[:3])

@@ -1,7 +1,8 @@
 # Graphical BEetle
 
 The Tkinter/ttk window is the **recommended entry point** in the README and
-a view of the existing guided toolkit. The launch behavior is unchanged:
+opens the guided setup wizard, with **Advanced recovery tools** available from
+the welcome page. The terminal launch behavior is unchanged:
 `run.sh` and `run.ps1` without a GUI flag still open the original text menu.
 The existing 5x1 logo and dark green palette identify the fork. The GUI does not add another flashing
 implementation or bypass the backend's validation, backups or confirmations.
