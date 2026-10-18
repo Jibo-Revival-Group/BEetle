@@ -110,6 +110,15 @@ def build_tools(work, licenses, cygwin, build):
         archive = licenses / name
         build.download(url, archive, sha)
         build.unpack(archive, work)
+    # Apply through native Python: Cygwin patch cannot chmod NTFS files extracted
+    # by Windows Python. Modern GCC also requires the proper handle declaration.
+    getsize = work / 'e2fsprogs-1.47.1/lib/ext2fs/getsize.c'
+    original = getsize.read_text(encoding='utf-8')
+    marker = '#include "winioctl.h"\n'
+    if original.count(marker) != 1:
+        raise RuntimeError('Unknown e2fsprogs Windows handle include target')
+    getsize.write_text(original.replace(marker, marker + '#include <io.h>\n'),
+                       encoding='utf-8', newline='\n')
     entry = load_entry_builder()
     loader = ROOT / 'assets/loader.bin'
     loader_sha = entry.digest(loader)

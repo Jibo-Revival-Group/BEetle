@@ -21,7 +21,6 @@ cd "$work/entry"
 gcc -O2 -Iinclude $CPPFLAGS -DJIBO_LIBUSB_BACKEND=1 -DDFU_STAGE2_ENABLE_LAUNCH=1 \
   exploit/*.c common/sha256.c $LDFLAGS -lusb-1.0 -o "$out/shofel2_t124.exe"
 unset CPPFLAGS LDFLAGS PKG_CONFIG_PATH
-patch -d "$work/e2fsprogs-1.47.1" -p1 < "$(dirname "$(cygpath -u "$0")")/e2fsprogs-cygwin.patch"
 cd "$work/ext4-build"
 "$work/e2fsprogs-1.47.1/configure" --enable-libuuid --enable-libblkid \
   --disable-nls --disable-tls --disable-mmp --disable-tdb --disable-elf-shlibs \
