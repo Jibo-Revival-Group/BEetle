@@ -226,6 +226,18 @@ def notices(licenses, entry, revision):
                     target = licenses / package_name / Path(*[part for part in file.parts if part not in ('..', '.')])
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(source, target)
+        if package_name == 'windows-curses':
+            # PyPI publishes wheels only; preserve the matching tagged source and
+            # its exact PDCurses submodule, in addition to wheel license texts.
+            if dist.version != '2.4.1':
+                raise RuntimeError('Unexpected windows-curses version')
+            download('https://codeload.github.com/zephyrproject-rtos/windows-curses/tar.gz/refs/tags/v2.4.1',
+                     licenses / 'windows-curses-2.4.1-source.tar.gz',
+                     '7ae72796f76884ace8a1c4e9cc798a0550baead4a48d62a596021c2dca5124ed')
+            download('https://codeload.github.com/zephyrproject-rtos/PDCurses/tar.gz/5c62af03e9a05e3a3ae8c8354c1234b772dcf4b0',
+                     licenses / 'PDCurses-5c62af03-source.tar.gz',
+                     'e5a0819807ea4f5ff11d89048b177a915c2081832155303fb0989600fdc71769')
+            continue
         metadata = json.loads(urllib.request.urlopen(
             'https://pypi.org/pypi/' + package_name + '/' + dist.version + '/json').read())
         source = next(item for item in metadata['urls'] if item['packagetype'] == 'sdist')
