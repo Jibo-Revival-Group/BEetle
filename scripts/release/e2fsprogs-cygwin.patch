@@ -1,0 +1,10 @@
+--- a/lib/ext2fs/getsize.c
++++ b/lib/ext2fs/getsize.c
+@@ -66,6 +66,7 @@
+ #if defined(__CYGWIN__) || defined (WIN32)
+ #include "windows.h"
+ #include "winioctl.h"
++#include <io.h> /* Declare _get_osfhandle, including its pointer-sized return. */
+ 
+ #if (_WIN32_WINNT >= 0x0500)
+ #define HAVE_GET_FILE_SIZE_EX 1

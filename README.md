@@ -61,7 +61,7 @@ On Linux, the `.pyz` package is generated locally and reused on later runs; on m
 
 ### Text menu (alternate)
 
-For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. The launchers without a GUI flag still open the text menu. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
+For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 interactive` on Windows. The launchers without a GUI flag still open the text menu. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
 
 ## Compatibility
 
