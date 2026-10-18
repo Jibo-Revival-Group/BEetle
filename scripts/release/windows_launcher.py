@@ -1,134 +1,83 @@
-"""One-file Windows launcher; embeds, but does not rebuild, the Linux payload."""
-import hashlib
+"""Direct Windows GUI/CLI entry point. No WSL, VM, distro or feature setup."""
+from contextlib import redirect_stderr, redirect_stdout
 import json
 import os
-import re
 from pathlib import Path
-import subprocess
 import sys
-import tarfile
 
 
-def windows_powershell_environment():
-    """Let PowerShell 5.1 rebuild its own module path after a pwsh/Python parent.
-
-    https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath
-    """
-    return {key: value for key, value in os.environ.items()
-            if key.upper() != "PSMODULEPATH"}
-
-
-def verify_offline_dependencies(root):
-    manifest = json.loads((root / 'offline-manifest.json').read_text())
-    if manifest.get('schema') != 1 or set(manifest.get('files', {})) != {'ubuntu.wsl', 'wsl.msi', 'usbipd.msi'}:
-        raise RuntimeError('Offline dependency manifest is incomplete')
-    for name, item in manifest['files'].items():
-        path = root / name
-        if not path.is_file() or path.stat().st_size != item['bytes']:
-            raise RuntimeError('Offline dependency size mismatch: ' + name)
-        with path.open('rb') as stream:
-            actual = hashlib.file_digest(stream, 'sha256').hexdigest()
-        if actual != item['sha256']:
-            raise RuntimeError('Offline dependency checksum mismatch: ' + name)
-    return manifest
+def runtime_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS) / 'runtime'
+    return Path(__file__).resolve().parents[2] / '.build/release-windows-native/runtime'
 
 
 def show_console():
-    """Troubleshooting only: attach to the caller or allocate a real console."""
-    if sys.platform != "win32":
+    if sys.platform != 'win32':
         return
     import ctypes
     kernel = ctypes.windll.kernel32
     if not kernel.AttachConsole(-1):
         kernel.AllocConsole()
-    if sys.stdout is None:
-        sys.stdout = open("CONOUT$", "w", buffering=1)
-    if sys.stderr is None:
-        sys.stderr = open("CONOUT$", "w", buffering=1)
-    if sys.stdin is None:
-        sys.stdin = open("CONIN$", "r")
+    for name, file, mode in (('stdin','CONIN$','r'),('stdout','CONOUT$','w'),('stderr','CONOUT$','w')):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(file, mode, buffering=1))
 
 
-def show_error(message):
-    if sys.platform == "win32":
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(None, message, "BEetle", 0x00010010)
-    else:
-        print("Launcher: " + message, file=sys.stderr)
+def _main(arguments):
+    runtime = runtime_path()
+    if not (runtime / 'release-manifest.json').is_file():
+        raise RuntimeError('The native Windows bundle is not built. Download BEetle-Windows-x64.exe '
+                           'from the native-bundles workflow, or build it with --windows-native.')
+    receipt = json.loads((runtime / 'release-manifest.json').read_text())
+    print('BEetle (build ' + receipt['revision'][:7] + ')', flush=True)
+    if arguments == ['--version']:
+        print('BEetle Windows x64 — native GUI and USB; no WSL or virtualization')
+        return 0
+    sys.path.insert(0, str(runtime))
+    from manifest import verify_manifest
+    verify_manifest(runtime)
+    if arguments == ['--driver-help']:
+        from jibo_windows import show_driver_help
+        show_driver_help(runtime)
+        return 0
+    if arguments and arguments[0] not in ('gui','--gui','--self-check','--gui-smoke','--filesystem-smoke'):
+        show_console()
+    import native_launcher
+    return native_launcher.main(runtime=runtime, arguments=arguments or ['gui'])
 
 
 def main():
     args = sys.argv[1:]
-    if len(args) == 3 and args[0] in ("--version", "--self-check") and args[1] == "--output":
-        from contextlib import redirect_stdout, redirect_stderr
-        with open(args[2], "w", encoding="utf-8") as output, redirect_stdout(output), redirect_stderr(output):
-            try:
-                return _main(args[:1])
-            except Exception as exc:
-                print('Launcher: ' + str(exc), flush=True)
-                return 1
-    return _main(args)
-
-
-def _main(args):
-    if '-ShowConsole' in args:
+    output = None
+    if args and '--output' in args and args[0] in ('--version','--self-check','--gui-smoke','--filesystem-smoke'):
+        index = args.index('--output')
+        if index + 1 >= len(args):
+            raise RuntimeError('--output requires a filename')
+        output = Path(args[index + 1])
+        del args[index:index + 2]
+    if output is None and args and args[0] not in ('gui','--gui','--driver-help','--self-check','--gui-smoke','--filesystem-smoke'):
         show_console()
-    root = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
-    revision_file = root / 'revision.txt'
-    revision = revision_file.read_text().strip() if revision_file.is_file() else 'unknown'
-    print('BEetle (build ' + revision[:7] + ')', flush=True)
-    archive = root / 'payload.tar.gz'
-    expected = (root / 'payload.sha256').read_text().strip()
-    if hashlib.sha256(archive.read_bytes()).hexdigest() != expected:
-        raise RuntimeError('Embedded Linux payload checksum mismatch')
-    if args == ['--version']:
-        print('BEetle Windows x64 WSL bootstrapper')
-        return 0
-    if args != ['--version']:
-        verify_offline_dependencies(root)
-    if args == ['--self-check']:
-        for helper in ('bootstrap.ps1', 'run.ps1', 'wsl-usb-permissions.sh', 'wsl-user-launch.sh', 'wsl-provision.sh',
-                       'LICENSE', 'NOTICE.md', 'THIRD-PARTY-NOTICES.md', 'console.ps1'):
-            if not (root / helper).is_file():
-                raise RuntimeError('Missing embedded Windows helper: ' + helper)
-        with tarfile.open(archive) as source:
-            names = source.getnames()
-            for required in ('jibo-dfu', 'AppRun', '_internal/runtime/licenses/LICENSE',
-                             '_internal/runtime/licenses/THIRD-PARTY-NOTICES.md'):
-                if required not in names:
-                    raise RuntimeError('Missing embedded file: ' + required)
-        print(json.dumps({'payload_sha256': expected, 'revision': (root / 'revision.txt').read_text().strip(),
-                          'payload_files': len(names), 'wsl_setup_attempted': False, 'offline_dependencies': True}))
-        return 0
-    if len(args) == 2 and args[0] == '--extract-payload':
-        # Export the source-accompanied archive for inspection/relinking, not extraction
-        # of untrusted tar members by the bootstrapper.
-        import shutil
-        shutil.copyfile(archive, args[1])
-        return 0
-    options = list(args)
-    if '-ShowConsole' in options:
-        options.remove('-ShowConsole')
-    override = len(options) == 2 and options[0] == '-Distro' and re.fullmatch(r'[A-Za-z0-9._-]{1,256}', options[1])
-    if options and not override:
-        raise RuntimeError('Usage: BEetle-Windows-x64.exe [--version|--self-check|--extract-payload FILE] or [-Distro NAME] [-ShowConsole]')
-    visible = '-ShowConsole' in args
-    window = [] if visible else ['-WindowStyle', 'Hidden']
-    return subprocess.call(['powershell.exe', '-NoProfile', '-NonInteractive', *window,
-                            '-ExecutionPolicy', 'Bypass', '-File', str(root / 'bootstrap.ps1'),
-                            '-PayloadRoot', str(root)] + args,
-                           creationflags=0 if visible else 0x08000000,
-                           env=windows_powershell_environment())
-
-
-def run():
-    """Keep errors visible without an invisible console input wait."""
-    try:
-        return main()
-    except Exception as exc:
-        show_error(str(exc))
-        return 1
+    # A windowed PyInstaller program has no stdout/stderr by default.
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+    def invoke():
+        try:
+            return _main(args)
+        except Exception as exc:
+            message = 'BEetle could not start: ' + str(exc)
+            print(message, file=sys.stderr, flush=True)
+            if output is None and sys.platform == 'win32':
+                import ctypes
+                ctypes.windll.user32.MessageBoxW(None, message, 'BEetle', 0x10)
+            return 1
+    if output is not None:
+        with output.open('w', encoding='utf-8') as stream, redirect_stdout(stream), redirect_stderr(stream):
+            return invoke()
+    return invoke()
 
 
 if __name__ == '__main__':
-    raise SystemExit(run())
+    raise SystemExit(main())

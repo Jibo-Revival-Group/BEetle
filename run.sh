@@ -48,7 +48,7 @@ cleanup() {
 trap cleanup EXIT
 
 start_wsl_usb_handoff() {
-  [[ -n ${WSL_DISTRO_NAME:-} && ${JIBO_MANUAL_USB:-0} != 1 && -f $repo_dir/run.ps1 ]] || return 0
+  [[ -n ${WSL_DISTRO_NAME:-} && ${JIBO_MANUAL_USB:-0} != 1 && -f $repo_dir/run-wsl.ps1 ]] || return 0
   local powershell win_script
   if [[ -n ${JIBO_WINDOWS_POWERSHELL:-} ]]; then
     powershell=$JIBO_WINDOWS_POWERSHELL
@@ -64,7 +64,7 @@ start_wsl_usb_handoff() {
     say 'wslpath is unavailable; attach Jibo USB manually with usbipd.'
     return 0
   fi
-  win_script=$(wslpath -w "$repo_dir/run.ps1") || {
+  win_script=$(wslpath -w "$repo_dir/run-wsl.ps1") || {
     say 'Could not locate the Windows USB helper; attach Jibo USB manually with usbipd.'
     return 0
   }

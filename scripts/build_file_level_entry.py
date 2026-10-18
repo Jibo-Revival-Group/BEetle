@@ -143,6 +143,42 @@ def verify_built_pair(work, loader_sha):
     return files
 
 
+def prepare_source(repository, work, size, sha, patch_path):
+    """Prepare the pinned, patched host source without building host or ARM code."""
+    run("git", "clone", "--no-checkout", repository, str(work))
+    run("git", "checkout", "--detach", SHOFEL_COMMIT, cwd=work)
+    run("git", "apply", "--check", str(patch_path), cwd=work)
+    run("git", "apply", str(patch_path), cwd=work)
+
+    header = work / "include/dfu_stage2_protocol.h"
+    original = header.read_text()
+    if original.count(PINNED_SIZE) != 1 or original.count(PINNED_HASH) != 1:
+        raise RuntimeError("the ShofEL stage protocol does not match the pinned baseline")
+    candidate_hash = ",\n".join(
+        "    " + ", ".join("0x" + sha[index:index + 2]
+                          for index in range(start, start + 16, 2))
+        for start in range(0, 64, 16)
+    )
+    updated = original.replace(PINNED_SIZE,
+                               "#define DFU_STAGE2_LOADER_SIZE {}u".format(size))
+    updated = updated.replace(PINNED_HASH, candidate_hash)
+    updated = updated.replace(
+        "/* SHA-256 of the current signed-skills-bundle-20260923/loader.bin. */",
+        "/* SHA-256 of the manifest-checked experimental file-RPC loader. */")
+    header.write_text(updated)
+
+    # The stage payload also carried a private copy of the original hash.
+    # Make its request and readback checks use the shared protocol value.
+    payload = work / "payloads/dfu_stage2.c"
+    source = payload.read_text()
+    pinned_array = "static const u8 expected_sha256[32] = {\n" + PINNED_HASH + "\n};\n"
+    if source.count(pinned_array) != 1 or source.count("expected_sha256[i]") != 2:
+        raise RuntimeError("the stage payload does not match the pinned hash baseline")
+    source = source.replace(pinned_array, "")
+    source = source.replace("expected_sha256[i]", "DFU_STAGE2_EXPECTED_SHA256[i]")
+    payload.write_text(source)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", default=SHOFEL_REPOSITORY,
@@ -240,38 +276,7 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".shofel-entry-", dir=out.parent) as temp:
         work = Path(temp) / "source"
-        run("git", "clone", "--no-checkout", args.source, str(work))
-        run("git", "checkout", "--detach", SHOFEL_COMMIT, cwd=work)
-        run("git", "apply", "--check", str(patch_path), cwd=work)
-        run("git", "apply", str(patch_path), cwd=work)
-
-        header = work / "include/dfu_stage2_protocol.h"
-        original = header.read_text()
-        if original.count(PINNED_SIZE) != 1 or original.count(PINNED_HASH) != 1:
-            raise RuntimeError("the ShofEL stage protocol does not match the pinned baseline")
-        candidate_hash = ",\n".join(
-            "    " + ", ".join("0x" + sha[index:index + 2]
-                              for index in range(start, start + 16, 2))
-            for start in range(0, 64, 16)
-        )
-        updated = original.replace(PINNED_SIZE,
-                                   "#define DFU_STAGE2_LOADER_SIZE {}u".format(size))
-        updated = updated.replace(PINNED_HASH, candidate_hash)
-        updated = updated.replace(
-            "/* SHA-256 of the current signed-skills-bundle-20260923/loader.bin. */",
-            "/* SHA-256 of the manifest-checked experimental file-RPC loader. */")
-        header.write_text(updated)
-
-        # The stage payload also carried a private copy of the original hash.
-        # Make its request and readback checks use the shared protocol value.
-        payload = work / "payloads/dfu_stage2.c"
-        source = payload.read_text()
-        pinned_array = "static const u8 expected_sha256[32] = {\n" + PINNED_HASH + "\n};\n"
-        if source.count(pinned_array) != 1 or source.count("expected_sha256[i]") != 2:
-            raise RuntimeError("the stage payload does not match the pinned hash baseline")
-        source = source.replace(pinned_array, "")
-        source = source.replace("expected_sha256[i]", "DFU_STAGE2_EXPECTED_SHA256[i]")
-        payload.write_text(source)
+        prepare_source(args.source, work, size, sha, patch_path)
 
         if on_darwin:
             host_vars = darwin_host_make_variables(

@@ -31,7 +31,7 @@ class RunLauncherTests(unittest.TestCase):
         self.repo.mkdir()
         shutil.copy2(RUN_SH, self.repo / "run.sh")
         (self.repo / "run.sh").chmod(0o755)
-        (self.repo / "run.ps1").write_text("# mocked Windows USB helper\n")
+        (self.repo / "run-wsl.ps1").write_text("# mocked Windows USB helper\n")
 
         (self.repo / "scripts").mkdir()
         (self.repo / "scripts" / "package.py").write_text("# intercepted by python3 stub\n")

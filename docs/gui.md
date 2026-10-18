@@ -16,7 +16,7 @@ setup, not permission to flash a robot: device writes have a separate review.
 | Platform | Double-click entry | Terminal equivalent |
 | --- | --- | --- |
 | Linux x86_64 | `BEetle.desktop` | `./run.sh --gui` |
-| Windows x64 with WSL 2 + WSLg | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` |
+| Windows x64 (native) | `BEetle-Windows-x64.exe` | `run-gui.cmd` in a built checkout |
 | macOS Intel / Apple silicon | `BEetle.command` | `./run.sh --gui` |
 
 - **Linux:** the desktop file locates the adjacent `run-gui.sh` using its own
@@ -25,13 +25,10 @@ setup, not permission to flash a robot: device writes have a separate review.
   **Allow Launching**, **Trust**, or executable permission; copying it away
   from the toolkit is not supported. From a terminal, `./BEetle.desktop`
   and `./run-gui.sh` both launch the GUI.
-- **Windows:** this uses the same WSL 2 / usbipd USB handoff as the TUI, not a
-  native Windows DFU driver. WSLg displays the Linux Tk window on Windows.
-  Install WSL/Ubuntu and usbipd-win as described in the README. Run
-  `wsl --update`, then `wsl --shutdown` if WSLg is unavailable. The `.cmd`
-  wrapper uses a process-local PowerShell execution-policy override, never a
-  machine-wide policy change. Extra switches such as `-Distro` and `-ManualUsb`
-  can be supplied when invoked from a terminal.
+- **Windows:** the portable EXE opens the same Tk GUI directly. WSL and
+  virtualization are not required. **Help → Windows USB driver setup…** opens
+  the bundled Zadig utility after confirmation; select Jibo and libusbK. The
+  driver is a one-time Windows administrator action for each USB mode.
 - **macOS:** keep native Python, libusb, dfu-util and e2fsprogs installed as
   described in `docs/macos.md`. Install the Tk package matching your Python,
   e.g. `brew install python-tk@3.12` for Python 3.12, or the matching

@@ -10,6 +10,7 @@ imports it lazily and reports a missing Tk with a pointer to the text menu.
 
 import re
 import os
+import sys
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -1227,6 +1228,9 @@ def main(api):
     root = create_root()
     controller = core.GuiController(api)
     ToolkitWindow(root, controller)
+    if sys.platform == "win32":
+        from jibo_windows import add_driver_menu
+        add_driver_menu(root, controller)
     ready_file = os.environ.get("JIBO_GUI_READY_FILE")
     if ready_file:
         def signal_ready():

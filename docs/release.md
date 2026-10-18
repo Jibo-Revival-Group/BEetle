@@ -16,8 +16,7 @@ commands.
 Build each target on its native OS and architecture. PyInstaller does not
 cross-compile these formats. Separate Mac builds support Intel and Apple
 silicon. The Mac app has no Developer ID signature or notarization; the Windows
-executable has no publisher signature. The original bundled dependency MSIs
-retain their publisher signatures.
+executable has no publisher signature. The bundled Zadig driver utility retains its original publisher signature.
 
 ## GitHub Actions
 
@@ -74,47 +73,44 @@ DMG and copy `BEetle.app` to Applications.
 
 ## Local Windows build and portability
 
-First build the Linux payload above. Copy `release-out/` to a Windows x64
-build machine as `linux-stage/`, preserving `payload.tar.gz`, `revision.txt`
-and the corresponding-source archive. With Python 3.12 x64:
+The independent **BEetle native Windows** workflow builds and uploads the EXE
+without waiting for Linux or macOS. **BEetle native bundles** also includes this
+native job. Download its `BEetle-Windows-x64` artifact after the checks pass.
+There is no Linux payload, WSL image, USB sharing service or virtualization setup.
+
+For a local Windows build, install Python 3.12 x64 and a **build-only** Cygwin root
+with `gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core`.
+The workflow uses the official Cygwin installation action. Then run:
 
 ```powershell
 python -m venv .build-venv
 .build-venv\Scripts\python -m pip install -r requirements-release.txt
-.build-venv\Scripts\python scripts/release/build.py --windows-payload linux-stage
+.build-venv\Scripts\python scripts/release/build.py --windows-native --cygwin-root C:/cygwin
 ```
 
-The build machine needs internet. The end user's single EXE includes:
+The EXE contains native Windows Python/Tk, SSH dependencies, the pinned recovery
+payloads, native libusb, ShofEL/dfu-util, ext4 EXEs and their required DLLs. A small
+Cygwin compatibility DLL travels beside helpers inside the extracted bundle; no
+Cygwin installation or shell is required on the user's PC. This is user-space
+Windows code, not a virtual machine. Every helper's PE DLL imports are traversed;
+missing non-system libraries fail the build. Matching source packages and
+notices accompany the binaries. The signed Zadig utility is checksum-pinned;
+its libusbK/libusb-win32 sources accompany the release as well.
 
-- The frozen Linux GUI, Python, Tk, SSH dependencies, USB/ext4 tools and loader.
-- The official Ubuntu 22.04.5 filesystem (about 344 MiB compressed).
-- Microsoft WSL 2.6.3 including its kernel and WSLg.
-- The original usbipd-win 5.3.0 x64 installer.
+The only persistent host change users may need is the Jibo USB driver, installed
+explicitly from **Help → Windows USB driver setup…**. The included utility defaults
+to libusbK and excludes hubs. Users review the device (`0955:7740` or `0955:701a`)
+and approve Windows elevation. BEetle does not silently change USB drivers.
+WinUSB cannot carry Jibo's oversized RCM control request; use libusbK.
 
-There is no first-launch Python installation, pip, Git clone, Ubuntu download,
-winget invocation, or WSL update download. SHA-256 checks protect the embedded
-files; MSI publisher signatures are checked before installation. Keep the EXE
-on a local drive with enough space for extraction and the private Linux
-filesystem. The large bundled prerequisites make this considerably larger than
-the upstream bootstrapper.
+Windows backups are ordinary files under `%USERPROFILE%\Jibo-Backups`. Existing
+backups inside a legacy WSL installation remain there: retain or copy them before
+removing any distribution. `run-wsl.ps1` and the explicit `--windows-payload`
+legacy builder remain available for existing installations; they are not called
+by the normal Windows launch or build path.
 
-Windows USB access needs WSL 2 and usbipd's system service/driver. If absent,
-BEetle offers to install the included packages and enable Virtual Machine
-Platform with Windows Update access disabled. This requires administrator
-approval, BIOS/UEFI virtualization, and possibly a reboot. An OS missing its
-feature files or blocked by organization policy must be repaired/configured
-separately; BEetle does not download replacement Windows components.
-
-The EXE is self-contained for toolkit dependencies, but Windows setup creates
-persistent OS components and a private `BEetle-5x1` WSL distribution under
-`%LOCALAPPDATA%\BEetle-5x1\wsl`. Robot backups remain in that Linux user's
-`~/Jibo-Backups`; retain them before removing the distribution. Existing
-compatible Ubuntu WSL distributions can also be selected with `-Distro NAME`.
-Do not remove a distribution containing backups you still need.
-
-Robot setup still needs Wi-Fi/internet to download and run the selected PM
-script and contact 5x1. Bundling host dependencies does not change those four
-SSH commands or replace the PM download.
+Robot setup still downloads external PM over SSH using the same four commands.
+The host bundle does not embed PM or change the OOBE/provisioned selection.
 
 ## Verification and distribution
 
@@ -129,9 +125,11 @@ BEetle.app/Contents/MacOS/BEetle --self-check
 
 Self-checks do not write to a robot. Native checks cover the manifest, Tcl,
 Paramiko, USB/filesystem tool startup, the GUI flow loader and the frozen
-pipeline subprocess. The Windows check verifies embedded files without
-enabling WSL or installing anything. `--gui-smoke` on the native payload opens
-a synthetic first window without USB access.
+pipeline subprocess on Linux/macOS. Windows checks the native helper EXEs,
+libusb DLL and private GUI flow loader. `--gui-smoke` opens a synthetic first
+window without USB access. Windows `--filesystem-smoke` creates a disposable ext4
+image in a path containing spaces and Unicode, edits/readbacks a file, checks
+ext4, resizes it and checks again. These diagnostics install nothing.
 
 Distribute the generated corresponding-source archive(s), `LICENSE`, and
 `THIRD-PARTY-NOTICES.md` alongside binaries. Runtime licenses and source
@@ -140,7 +138,7 @@ snapshots are also included in the native payload. Rebuilds need a fresh
 the native builder. Source archives capture the actual worktree, including
 uncommitted changes, while recording its base Git revision.
 
-Cross-platform release builds and offline first-run setup must be exercised
+Cross-platform release builds and driver setup must be exercised
 on their respective operating systems. Robot DFU, SSH, PM, firmware and reboot
 behavior still need live hardware acceptance; mocked release tests cannot
 establish those results.
@@ -148,9 +146,9 @@ establish those results.
 ## CI troubleshooting
 
 If Windows PowerShell reports that built-in commands such as `Get-FileHash`
-are missing, ensure the updated `windows_launcher.py` and release tests are
+are missing, ensure the updated build scripts and release tests are
 present. Python children of PowerShell 7 can inherit its incompatible module
-paths; the launcher removes `PSModulePath` only from its Windows PowerShell
+paths; the driver signature check removes `PSModulePath` only from its Windows PowerShell
 child's environment so that 5.1 constructs the correct paths. See
 [Microsoft's module-path documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath#starting-windows-powershell-from-powershell-7).
 

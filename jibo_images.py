@@ -27,13 +27,24 @@ class ImageError(Exception):
 
 
 def _chown_to_invoking_user(path):
-    if os.geteuid() == 0 and os.environ.get("SUDO_UID"):
+    if getattr(os, "geteuid", lambda: -1)() == 0 and os.environ.get("SUDO_UID"):
         try:
             uid = int(os.environ["SUDO_UID"])
             gid = int(os.environ.get("SUDO_GID", "-1"))
             os.chown(path, uid, gid)
         except (ValueError, OSError):
             pass
+
+
+def _debugfs_path(path):
+    # debugfs parses its -R command separately from Windows argv. Protect spaces
+    # and use forward slashes so its parser cannot consume drive-path backslashes.
+    value = str(path)
+    if os.name == "nt":
+        value = value.replace("\\", "/")
+    if any(ord(c) < 32 for c in value):
+        raise ImageError("Control character in an ext4 editing path.")
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def _run_debugfs(image, command, writable=False, allow_missing=False):
@@ -101,7 +112,7 @@ def _extract(image, image_path, destination, optional=False):
     destination = Path(destination)
     if destination.exists():
         destination.unlink()
-    output = _run_debugfs(image, "dump " + image_path + " " + str(destination), allow_missing=optional)
+    output = _run_debugfs(image, "dump " + image_path + " " + _debugfs_path(destination), allow_missing=optional)
     if not destination.is_file():
         if optional and re.search(r"File not found|ext2_lookup", output, re.IGNORECASE):
             return None
@@ -142,7 +153,7 @@ def _replace_file(image, image_path, content, workdir):
     replacement.write_bytes(content)
     replacement.chmod(0o600)
     _run_debugfs(image, "rm " + image_path, writable=True)
-    _run_debugfs(image, "write " + str(replacement) + " " + image_path, writable=True)
+    _run_debugfs(image, "write " + _debugfs_path(replacement) + " " + image_path, writable=True)
     for field in ("mode", "uid", "gid"):
         _run_debugfs(image, "set_inode_field " + image_path + " " + field + " " + metadata[field],
                      writable=True)
@@ -162,7 +173,7 @@ def _put_factory_file(image, image_path, content, workdir, mode):
     replacement = Path(workdir) / "replacement"
     replacement.write_bytes(content)
     replacement.chmod(0o600)
-    _run_debugfs(image, "write " + str(replacement) + " " + image_path, writable=True)
+    _run_debugfs(image, "write " + _debugfs_path(replacement) + " " + image_path, writable=True)
     for field in ("mode", "uid", "gid"):
         _run_debugfs(image, "set_inode_field " + image_path + " " + field + " " + metadata[field],
                      writable=True)

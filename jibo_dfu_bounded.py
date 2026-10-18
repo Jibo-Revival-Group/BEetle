@@ -119,6 +119,8 @@ _ConfigDescriptorP = ctypes.POINTER(_ConfigDescriptor)
 def _load_libusb():
     override = os.environ.get("JIBO_LIBUSB")
     candidates = [override] if override else [ctypes.util.find_library("usb-1.0")]
+    if not override and sys.platform == "win32":
+        candidates.append(str(Path(__file__).resolve().parent / "tools/libusb-1.0.dll"))
     if not override and sys.platform == "darwin":
         # dyld/find_library may not search Homebrew's keg on either architecture.
         candidates.extend(str(Path(prefix) / "lib/libusb-1.0.dylib") for prefix in (

@@ -8,7 +8,10 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import pwd
+try:
+    import pwd
+except ImportError:  # Windows has no Unix password database.
+    pwd = None
 import re
 import secrets
 import shutil
@@ -57,7 +60,7 @@ PIPELINE_HELPER = ROOT / "jibo_dfu_pipeline.py"
 
 
 def _invoking_user():
-    if os.geteuid() == 0 and os.environ.get("SUDO_UID"):
+    if pwd is not None and getattr(os, "geteuid", lambda: -1)() == 0 and os.environ.get("SUDO_UID"):
         try:
             uid = int(os.environ["SUDO_UID"])
             gid = int(os.environ.get("SUDO_GID", "-1"))
@@ -99,7 +102,7 @@ class FileRpcStatusError(DfuError):
 
 
 def devices(root=None):
-    if root is None and sys.platform == "darwin":
+    if root is None and sys.platform in ("darwin", "win32"):
         try:
             return bounded.list_recovery_devices()
         except bounded.BoundedDfuError as exc:
@@ -350,7 +353,7 @@ def _transfer_error_detail(output):
 
 def tool(name, override=None):
     override = override or (os.environ.get("JIBO_DFU_UTIL") if name == "dfu-util" else None)
-    candidate = override or str(ROOT / "tools" / name)
+    candidate = override or str(ROOT / "tools" / (name + (".exe" if sys.platform == "win32" else "")))
     # Linux packages can leave ELF executables in tools/; Macs use native tools.
     if (override or sys.platform != "darwin") and Path(candidate).is_file():
         return str(Path(candidate).resolve())
@@ -391,9 +394,9 @@ def _partition_transfer_argv(dfu_util, port, alternative, option, path, size=Non
 
 def _shofel_dfu_tool(override=None):
     """Find a matched ShofEL host and launch-enabled RAM payload."""
-    candidate = override or os.environ.get("JIBO_SHOFEL2") or str(ROOT / "tools" / "shofel2_t124")
+    candidate = override or os.environ.get("JIBO_SHOFEL2") or str(ROOT / "tools" / ("shofel2_t124.exe" if sys.platform == "win32" else "shofel2_t124"))
     # tools/ may hold Linux ELF executables from a package build; Macs use a native host.
-    if candidate == str(ROOT / "tools" / "shofel2_t124") and sys.platform == "darwin":
+    if candidate == str(ROOT / "tools" / ("shofel2_t124.exe" if sys.platform == "win32" else "shofel2_t124")) and sys.platform == "darwin":
         candidate = None
     if not candidate or not Path(candidate).is_file():
         if override:
@@ -1772,7 +1775,7 @@ def _confirm_write(supplied=None, plan=None):
         if sys.stdin.isatty():
             response = input(prompt)
         else:
-            with open("/dev/tty", "r+", encoding="utf-8") as terminal:
+            with open("CONIN$" if os.name == "nt" else "/dev/tty", "r+", encoding="utf-8") as terminal:
                 terminal.write(prompt)
                 terminal.flush()
                 response = terminal.readline().rstrip("\r\n")
@@ -2746,7 +2749,7 @@ def _confirm_file_write(supplied=None, plan=None):
         if sys.stdin.isatty():
             response = input("Apply these file replacements? [y/N] ").strip().lower()
         else:
-            with open("/dev/tty", "r+", encoding="utf-8") as terminal:
+            with open("CONIN$" if os.name == "nt" else "/dev/tty", "r+", encoding="utf-8") as terminal:
                 terminal.write("Apply these file replacements? [y/N] ")
                 terminal.flush()
                 response = terminal.readline().strip().lower()

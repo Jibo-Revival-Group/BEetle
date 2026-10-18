@@ -139,7 +139,7 @@ def test_notice_paths_do_not_create_fake_mac_bundles():
 
 
 def test_windows_payload_checksum_refuses_corruption(tmp_path, monkeypatch):
-    module = load_script('windows_launcher')
+    module = load_script('legacy_wsl_launcher')
     (tmp_path / 'payload.tar.gz').write_bytes(b'corrupt')
     (tmp_path / 'payload.sha256').write_text('0' * 64)
     monkeypatch.setattr(sys, '_MEIPASS', str(tmp_path), raising=False)
@@ -306,7 +306,7 @@ def test_native_version_needs_no_desktop_or_tools():
 def test_offline_manifest_verifies_all_components_and_rejects_tampering(tmp_path):
     import hashlib
     import json
-    module = load_script('windows_launcher')
+    module = load_script('legacy_wsl_launcher')
     files = {}
     for name in ('ubuntu.wsl', 'wsl.msi', 'usbipd.msi'):
         (tmp_path / name).write_bytes(name.encode())
@@ -323,7 +323,7 @@ def test_offline_manifest_verifies_all_components_and_rejects_tampering(tmp_path
 
 def test_offline_manifest_requires_all_three_dependencies(tmp_path):
     import json
-    module = load_script('windows_launcher')
+    module = load_script('legacy_wsl_launcher')
     (tmp_path / 'offline-manifest.json').write_text(json.dumps({'schema': 1, 'files': {}}))
     with pytest.raises(RuntimeError, match='incomplete'):
         module.verify_offline_dependencies(tmp_path)
@@ -384,7 +384,7 @@ def test_windows_build_embeds_dependencies_and_keeps_windows_checks(tmp_path, mo
             receipt = Path(args[args.index('--output') + 1])
             receipt.write_text('BEetle (build aaaaaaa)\n{"revision":"' + 'a' * 40 + '"}\n')
     monkeypatch.setattr(module, 'run', run)
-    module.windows(payload)
+    module.windows_legacy(payload)
     assert prepared == [payload]
     argv = calls[0]
     embedded = [argv[i + 1] for i, item in enumerate(argv) if item == '--add-data']
@@ -421,7 +421,7 @@ def test_windows_scripts_parse_without_running_bootstrap():
     for name in ('bootstrap.ps1', 'console.ps1', 'run.ps1'):
         path = ROOT / 'scripts/release' / name
         command = "[scriptblock]::Create([IO.File]::ReadAllText('" + str(path).replace("'", "''") + "')) | Out-Null"
-        env = load_script('windows_launcher').windows_powershell_environment()
+        env = load_script('legacy_wsl_launcher').windows_powershell_environment()
         subprocess.run([shell, '-NoProfile', '-NonInteractive', '-Command', command], check=True, env=env)
 
 
@@ -442,7 +442,7 @@ def test_bundled_msi_reviews_hashes_publishers_and_exit_codes(shell_name):
     result = subprocess.run([shell, '-NoProfile', '-NonInteractive', '-File',
                              str(ROOT / 'scripts/release/test-offline.ps1')],
                             capture_output=True, text=True,
-                            env=load_script('windows_launcher').windows_powershell_environment())
+                            env=load_script('legacy_wsl_launcher').windows_powershell_environment())
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'PASS:' in result.stdout
 
@@ -488,7 +488,7 @@ def test_linux_notices_still_require_both_original_license_texts(tmp_path, missi
 def test_windows_powershell_child_rebuilds_module_path_without_changing_parent(
         monkeypatch, key, root_key):
     from types import SimpleNamespace
-    module = load_script("windows_launcher")
+    module = load_script("legacy_wsl_launcher")
     # Windows uppercases os.environ keys; Unix keeps their original spelling.
     # Exercise both on every host without changing any real OS environment.
     parent = {key: "PowerShell-7-only-modules",
@@ -502,7 +502,7 @@ def test_windows_powershell_child_rebuilds_module_path_without_changing_parent(
 
 def test_packaged_windows_launcher_passes_clean_environment_to_powershell(tmp_path, monkeypatch):
     import hashlib
-    module = load_script("windows_launcher")
+    module = load_script("legacy_wsl_launcher")
     (tmp_path / "payload.tar.gz").write_bytes(b"fixture payload")
     (tmp_path / "payload.sha256").write_text(hashlib.sha256(b"fixture payload").hexdigest())
     (tmp_path / "revision.txt").write_text("a" * 40)

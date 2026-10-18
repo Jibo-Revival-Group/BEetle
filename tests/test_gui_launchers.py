@@ -156,8 +156,8 @@ def test_desktop_exec_runs_through_real_gio_parser_with_spaces(tmp_path):
     assert trace.read_text() == str(repo)
 
 
-def test_windows_wrapper_preserves_wsl_helper_and_explicit_gui_switch():
-    launcher = (ROOT / "run.ps1").read_text()
+def test_legacy_windows_helper_remains_explicit_and_gui_wrapper_is_native():
+    launcher = (ROOT / "run-wsl.ps1").read_text()
     wrapper = (ROOT / "run-gui.cmd").read_text()
     assert "[switch]$Gui" in launcher
     assert "$toolkitArguments = @()" in launcher

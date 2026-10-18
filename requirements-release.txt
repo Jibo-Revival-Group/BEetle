@@ -8,3 +8,6 @@ cffi==2.0.0
 pycparser==2.23
 pytest==8.4.2
 pillow==11.3.0
+
+# Native Windows GUI flow imports the same curses menu module.
+windows-curses==2.4.1; sys_platform == "win32"

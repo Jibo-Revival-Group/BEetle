@@ -13,7 +13,7 @@ python3 jibo_dfu.py setup-5x1 --session ~/Jibo-Backups/beetle-5x1-session.json
 
 New 5x1 setup has automated fixture coverage; live OOBE/provisioned robot validation is still required. Historical hardware results below refer to upstream DFU features.
 
-A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg + usbipd-win** or **Linux**; a native **macOS** launcher is also available. The original text menu and scripting commands remain available.
+A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows directly** or **Linux**; a native **macOS** launcher is also available. The original text menu and scripting commands remain available.
 
 ## Start the GUI
 
@@ -21,7 +21,7 @@ Clone or download this repository, extract it if needed, and keep the launchers 
 
 | Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
 | --- | --- | --- | --- |
-| **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
+| **Windows x64** | `BEetle-Windows-x64.exe` | `run-gui.cmd` (built source checkout) | [Bundled app and Jibo USB driver](#windows-native) |
 | **macOS Intel / Apple silicon** | `BEetle.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); Intel tested, Apple silicon **experimental** |
 | **Linux x86_64** | `BEetle.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
 
@@ -73,7 +73,7 @@ If your robot was previously changed by another mod system, it will most likely 
 
 If you are here to mod a stock robot, use the guided menu to change its existing installation to `int-developer` mode. **If the robot has not joined your Wi-Fi yet, configure Wi-Fi in the toolkit too:** changing the mode alone does not give it a network connection.
 
-1. Start the GUI with `./run.sh --gui` on Linux or macOS, or `.\run.ps1 -Gui -Distro Ubuntu-22.04` from PowerShell on a Windows PC with WSL 2 + WSLg. The double-click entries above open the same window. Connect one robot by USB and put it in RCM/APX mode.
+1. Start the GUI with `./run.sh --gui` on Linux or macOS, or `BEetle-Windows-x64.exe` on Windows. The double-click entries above open the same window. Connect one robot by USB and put it in RCM/APX mode.
 2. Choose **Enter DFU with ShofEL (RAM loader)**. Wait for the menu to show the robot in DFU. The included Meerkat Rev02 entry selects RAM slot 2 or 3 from the hardware strap; slot 3 has only offline checks so far. See [hardware coverage](#hardware-results-and-remaining-work) for other revisions.
 3. If the robot already has your Wi-Fi saved, choose **Set robot mode** and select **int-developer**. If it has never connected to your Wi-Fi, choose **Set mode and configure Wi-Fi**, select **int-developer**, then enter your Wi-Fi name and password twice. That action applies both settings together. If a saved Wi-Fi password is wrong, choose **Add or update a Wi-Fi network** and enter the same SSID with the corrected password.
 4. Review and confirm the change. The toolkit saves or reuses a `var` rollback backup and checks the result. After a fresh RTM flash, the stock Wi-Fi and network startup files can be too large for the quick editor; if the menu offers a full `var` transfer, choose it and leave the robot connected until readback finishes. Setting Wi-Fi also prepares startup to skip the retired Jibo server check that can disconnect an otherwise working network. On RTM2, it applies the later TI radio settings too. These changes take effect when the robot restarts; flashing alone does not make them.
@@ -95,37 +95,32 @@ When `./run.sh` is started inside WSL, it also tries to use Windows PowerShell a
 
 The first build needs an internet connection for ShofEL and package installation. The launcher's default loader is the included `assets/loader.bin`; `JIBO_LOADER=/path/to/loader.bin ./run.sh --gui` selects a different local copy of the same pinned image. The U-Boot source and notices are in `vendor/jibo-ram-dfu-v1-source.tar.gz`; the file access changes are in `firmware/file-level.patch` and `firmware/cid-serial.patch`, and the faster transfer changes are in `firmware/dfu-queue.patch`. An existing package can be run directly with `sudo python3 dist/jibo-dfu-linux-x86_64.pyz`.
 
-## Windows with WSL
+## Windows (native)
 
-Use an x64 Windows PC with WSL 2 and Ubuntu. For a first-time setup, open **PowerShell as Administrator** and install WSL with Ubuntu 22.04 LTS:
+Download the **BEetle-Windows-x64** artifact from **Actions → BEetle native
+Windows** or **BEetle native bundles**, extract the artifact ZIP, then double-click
+`BEetle-Windows-x64.exe`. Python, Tk, SSH, USB and ext4 tools are inside the EXE.
+You do not need WSL, Ubuntu, usbipd, Hyper-V, or CPU/Windows virtualization enabled.
+There are no first-run dependency downloads.
 
-```powershell
-wsl --install -d Ubuntu-22.04
-```
+On first use, choose **Help → Windows USB driver setup…**. The included Zadig
+utility installs **libusbK** for Jibo. Select only the Jibo USB ID shown in the
+dialog: `0955:7740` in RCM/APX, then `0955:701a` after recovery starts. Each USB
+mode needs its driver once. Driver installation requests Windows administrator
+approval. The application itself runs as your normal user. WinUSB's 4 KiB control
+transfer limit prevents the RCM exploit, so use libusbK for recovery.
 
-Restart Windows if prompted, then open **Ubuntu 22.04** once to create its Linux username and password. In PowerShell, update WSL and check that Ubuntu shows `VERSION 2`:
+Backups are saved directly in `%USERPROFILE%\Jibo-Backups`, not inside a Linux
+distribution. Existing robot-bound backups and the existing GUI, CLI, reviews,
+rollback checks and four SSH PM commands are retained. PM still needs internet
+on the robot. Full-partition transfers use dfu-util on Windows; Linux retains its
+pipelined transport.
 
-```powershell
-wsl --update
-wsl --list --verbose
-```
-
-If Ubuntu shows `VERSION 1`, run `wsl --set-version Ubuntu-22.04 2`. Install [usbipd-win](https://github.com/dorssel/usbipd-win) from PowerShell with Windows Package Manager, then reopen PowerShell so `usbipd` is on your path:
-
-```powershell
-winget install --interactive --exact dorssel.usbipd-win
-usbipd list
-```
-
-If `winget` is unavailable, install the `.msi` from the [usbipd-win releases](https://github.com/dorssel/usbipd-win/releases). [Microsoft's WSL instructions](https://learn.microsoft.com/windows/wsl/install), [Ubuntu's WSL guide](https://ubuntu.com/wsl/docs/latest/howto/install-ubuntu-wsl2/), and [Microsoft's USB connection guide](https://learn.microsoft.com/windows/wsl/connect-usb) cover the setup and USB prerequisites.
-
-Open PowerShell in the downloaded or cloned toolkit folder and run:
-
-```powershell
-.\run.ps1 -Gui -Distro Ubuntu-22.04
-```
-
-The launcher selects that WSL 2 distribution, shares and attaches a connected Jibo USB device, then runs `run.sh --gui` inside WSL. WSLg must be available to display the window; if it is missing, run `wsl --update` and `wsl --shutdown`, then reopen the launcher. The robot can change from APX (`0955:7740`) to DFU (`0955:701a`); the launcher watches both USB identities while the menu is open. Sharing a new USB identity may show a Windows administrator prompt. Run `.\run.ps1 -Gui -Distro Ubuntu-22.04 -ManualUsb` if you prefer to attach from another PowerShell window with `usbipd bind --busid <BUSID>` (administrator) and `usbipd attach --wsl --busid <BUSID>`. The Linux `./run.sh --gui` also works directly inside WSL with manual USB attachment and WSLg. If PowerShell's script policy blocks the launcher, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Gui -Distro Ubuntu-22.04` for that invocation.
+A source checkout's `run-gui.cmd` / `.\run.ps1 -Gui` opens its built EXE or the
+native Python launcher. See [Windows build instructions](docs/release.md#local-windows-build-and-portability).
+The optional old WSL route is documented separately in [windows-wsl.md](docs/windows-wsl.md).
+The native Windows artifact and live USB operations still require Windows CI and
+hardware acceptance; earlier Windows hardware results used the legacy WSL path.
 
 ## macOS
 

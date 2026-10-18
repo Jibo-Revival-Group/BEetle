@@ -81,7 +81,7 @@ def private_json(path, value):
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
-        if os.geteuid() == 0 and os.environ.get("SUDO_UID"):
+        if getattr(os, "geteuid", lambda: -1)() == 0 and os.environ.get("SUDO_UID"):
             os.chown(path, int(os.environ["SUDO_UID"]), int(os.environ.get("SUDO_GID", "-1")))
     finally:
         if os.path.exists(temporary):

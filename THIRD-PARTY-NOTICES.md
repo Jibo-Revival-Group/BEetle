@@ -62,3 +62,17 @@ and installed distribution notices are included in the shared licenses directory
 Release adapters were derived from Jibo-DFU-Mod-Toolkit revision
 `8f757eedd7cec108508b306b2eb123d5646a354a`. BEetle adds 5x1 branding, its
 external PM wizard, and bundled Windows setup dependencies.
+
+## Native Windows helpers
+
+Windows helpers include the Cygwin user-space compatibility runtime and, if
+required by PE imports, GCC runtime DLLs. Matching installed-package sources,
+notices and SHA-512 provenance are indexed in `CYGWIN-RUNTIME-SOURCES.json`.
+No Cygwin installer, Linux distribution or virtual machine is shipped or run.
+
+Zadig 2.9 / libwdi 1.5.1 retains Akeo Consulting's original signature. Its
+GPL-3.0-or-later / LGPL-3.0-or-later source and the matching embedded libusbK
+3.1.0.0 and libusb-win32 1.4.0.0 source archives accompany the Windows bundle.
+Windows SDK components embedded by upstream retain their own redistribution
+terms. Driver setup is an explicit user action; the toolkit does not silently
+install certificates or replace unrelated devices' drivers.

@@ -1,4 +1,4 @@
-"""Frozen Python adapter. The existing toolkit sources remain unmodified."""
+"""Frozen Python adapter for the existing GUI, CLI and shared flow sources."""
 import json
 import os
 from pathlib import Path
@@ -17,8 +17,22 @@ def configure(runtime):
     sys.path.insert(0, str(runtime))
     tools = runtime / 'tools'
     os.environ['PATH'] = str(tools) + os.pathsep + os.environ.get('PATH', '')
-    os.environ['JIBO_DFU_UTIL'] = str(tools / 'dfu-util')
-    os.environ['JIBO_SHOFEL2'] = str(tools / 'shofel2_t124')
+    os.environ['JIBO_DFU_UTIL'] = str(tools / ('dfu-util.exe' if sys.platform == 'win32' else 'dfu-util'))
+    os.environ['JIBO_SHOFEL2'] = str(tools / ('shofel2_t124.exe' if sys.platform == 'win32' else 'shofel2_t124'))
+    if sys.platform == 'win32':
+        os.environ['JIBO_LIBUSB'] = str(tools / 'libusb-1.0.dll')
+        # Keep the directory handle alive for ctypes' dependent DLL lookup.
+        if hasattr(os, 'add_dll_directory'):
+            globals()['_dll_directory'] = os.add_dll_directory(str(tools))
+        if not getattr(subprocess.Popen, '_beetle_hidden', False):
+            original = subprocess.Popen
+            class HiddenPopen(original):
+                _beetle_hidden = True
+                def __init__(self, *args, **kwargs):
+                    kwargs.setdefault('creationflags', subprocess.CREATE_NO_WINDOW)
+                    super().__init__(*args, **kwargs)
+            subprocess.Popen = HiddenPopen
+        return
     os.environ['JIBO_LIBUSB'] = str(runtime / 'lib' / ('libusb-1.0.dylib' if sys.platform == 'darwin' else 'libusb-1.0.so.0'))
 
 
@@ -37,7 +51,7 @@ def self_check(runtime):
               'dumpe2fs': ('-V',), 'mke2fs': ('-V',)}
     receipt['tools'] = {}
     for name, args in probes.items():
-        result = subprocess.run([str(tools / name), *args], capture_output=True, text=True, timeout=15)
+        result = subprocess.run([str(tools / (name + ('.exe' if sys.platform == 'win32' else ''))), *args], capture_output=True, text=True, timeout=15)
         output = (result.stdout + result.stderr).strip()
         # resize2fs has no version-only success mode; -V prints its version and usage.
         if result.returncode != 0 and not (name == 'resize2fs' and result.returncode == 1 and 'resize2fs' in output):
@@ -48,6 +62,11 @@ def self_check(runtime):
     # Source-based private flow loading must also work inside the frozen bundle.
     import jibo_gui_core
     jibo_gui_core.load_flows()
+    if sys.platform == 'win32':
+        receipt.update(platform='windows-native', virtualization_required=False, wsl_setup_attempted=False,
+                       pipeline_subprocess=False)
+        print(json.dumps({k: v for k, v in receipt.items() if k != 'files'}, indent=2))
+        return
     pipeline = subprocess.run([sys.executable, str(runtime / 'jibo_dfu_pipeline.py'), '--help'],
                               capture_output=True, text=True, timeout=15)
     if pipeline.returncode or 'Pipelined DFU transfer' not in pipeline.stdout:
@@ -80,15 +99,19 @@ def gui_smoke(runtime):
     controller.shutdown()
 
 
-def main():
-    arguments = sys.argv[1:]
+def main(runtime=None, arguments=None):
+    arguments = sys.argv[1:] if arguments is None else arguments
     if arguments == ['--version']:
         print('BEetle (release bundle)')
         return 0
-    runtime = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'runtime'
+    runtime = Path(runtime) if runtime is not None else Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'runtime'
     configure(runtime)
     if arguments == ['--self-check']:
         self_check(runtime)
+        return 0
+    if arguments == ['--filesystem-smoke']:
+        from windows_filesystem_smoke import filesystem_smoke
+        filesystem_smoke(runtime)
         return 0
     if arguments == ['--gui-smoke']:
         gui_smoke(runtime)

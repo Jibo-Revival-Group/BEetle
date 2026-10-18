@@ -215,7 +215,8 @@ def notices(licenses, entry, revision):
             path = ROOT / name
             if name and path.is_file() and not path.is_symlink():
                 archive.add(path, arcname=name)
-    for package_name in ('paramiko', 'bcrypt', 'PyNaCl', 'cffi', 'pycparser'):
+    packages = ('paramiko', 'bcrypt', 'PyNaCl', 'cffi', 'pycparser') + (('windows-curses',) if sys.platform == 'win32' else ())
+    for package_name in packages:
         import importlib.metadata
         dist = importlib.metadata.distribution(package_name)
         for file in dist.files or ():
@@ -263,8 +264,11 @@ def notices(licenses, entry, revision):
             shutil.copy2(path, licenses / ('TclTk-' + str(i) + '-' + path.name))
         if not terms:
             raise RuntimeError('Tcl/Tk license texts are missing')
-    else:
+    elif sys.platform == "linux":
         system_library_notices(licenses)
+    elif sys.platform == "win32":
+        for path in Path(sys.base_prefix).glob("tcl/*/license.terms"):
+            shutil.copy2(path, licenses / ("TclTk-" + path.parent.name + "-license.terms"))
     download('https://raw.githubusercontent.com/AppImage/type2-runtime/main/LICENSE', licenses / 'AppImage-runtime-LICENSE.txt')
     (licenses / 'BUILD-SOURCES.json').write_text(json.dumps({'revision': revision, 'sources': SOURCES,
         'python': sys.version, 'pyinstaller': PyInstaller.__version__,
@@ -528,7 +532,7 @@ def artifact_checksums(out):
 
 
 
-def windows(payload):
+def windows_legacy(payload):
     out = ROOT / 'release-out'
     out.mkdir(exist_ok=True)
     payload = Path(payload).resolve()
@@ -556,7 +560,7 @@ def windows(payload):
                  'scripts/release/wsl-user-launch.sh', 'scripts/release/wsl-provision.sh', 'scripts/release/run.ps1', 'LICENSE', 'NOTICE.md',
                  'THIRD-PARTY-NOTICES.md'):
         args += ['--add-data', str(ROOT / file) + ';.']
-    run(*args, ROOT / 'scripts/release/windows_launcher.py')
+    run(*args, ROOT / 'scripts/release/legacy_wsl_launcher.py')
     binary = out / 'BEetle-Windows-x64.exe'
     verify_windows_executable(binary)
     for mode in ('--version', '--self-check'):
@@ -579,14 +583,21 @@ if __name__ == '__main__':
     import platform
     default_arch = 'arm64' if platform.machine() in ('arm64', 'aarch64') else 'x86_64'
     parser.add_argument('--architecture', choices=('arm64', 'x86_64'), default=default_arch)
-    parser.add_argument('--windows-payload', type=Path)
+    parser.add_argument('--windows-payload', type=Path, help='Legacy WSL package only')
+    parser.add_argument('--windows-native', action='store_true', help='Build the direct, portable Windows EXE')
+    parser.add_argument('--cygwin-root', type=Path, default=Path('C:/cygwin'))
     args = parser.parse_args()
     if sys.version_info < (3, 11):
         parser.error('Release builds need Python 3.11 or newer; Python 3.12 is recommended.')
-    if args.windows_payload:
+    if args.windows_native or (sys.platform == 'win32' and not args.windows_payload):
         if sys.platform != 'win32':
             parser.error('Build the Windows EXE on Windows x64.')
-        windows(args.windows_payload)
+        from windows_native_build import build_windows
+        build_windows(sys.modules[__name__], args.cygwin_root)
+    elif args.windows_payload:
+        if sys.platform != 'win32':
+            parser.error('Build the Windows EXE on Windows x64.')
+        windows_legacy(args.windows_payload)
     else:
         if sys.platform not in ('linux', 'darwin'):
             parser.error('Build AppImage on Linux or .app on macOS.')
