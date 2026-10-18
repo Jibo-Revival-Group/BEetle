@@ -41,6 +41,7 @@ jobs:
           python-version: '3.12'
           architecture: x64
       - uses: cygwin/cygwin-install-action@v6
+        id: cygwin
         with:
           packages: gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core
           add-to-path: false
@@ -50,7 +51,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q tests/test_windows_native.py tests/test_release_builds.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/release/build.py --windows-native --cygwin-root C:/cygwin
+          python scripts/release/build.py --windows-native --cygwin-root '${{ steps.cygwin.outputs.root }}'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:

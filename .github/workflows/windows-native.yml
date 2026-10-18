@@ -28,6 +28,7 @@ jobs:
       - name: Install Windows build dependencies
         run: python -m pip install -r requirements-release.txt
       - uses: cygwin/cygwin-install-action@v6
+        id: cygwin
         with:
           packages: >-
             gcc-core make binutils git patch pkg-config
@@ -36,7 +37,7 @@ jobs:
       - name: Run Windows portability tests
         run: python -m pytest -q tests/test_windows_native.py tests/test_release_builds.py tests/test_gui_controller.py
       - name: Build and test direct Windows EXE
-        run: python scripts/release/build.py --windows-native --cygwin-root C:/cygwin
+        run: python scripts/release/build.py --windows-native --cygwin-root '${{ steps.cygwin.outputs.root }}'
       - uses: actions/upload-artifact@v4
         with:
           name: BEetle-Windows-x64
