@@ -153,3 +153,21 @@ def test_filesystem_smoke_uses_disposable_images_with_spaces_and_unicode(tmp_pat
         (tools / name).symlink_to(path)
     monkeypatch.setenv('PATH',str(tools)+os.pathsep+os.environ['PATH'])
     smoke.filesystem_smoke(tmp_path)
+
+
+def test_redirected_windows_confirmation_uses_separate_console_devices(monkeypatch):
+    import io
+    import jibo_dfu
+    from contextlib import contextmanager
+    output = io.StringIO()
+    calls = []
+    @contextmanager
+    def console(name, mode, **kwargs):
+        calls.append((name, mode))
+        yield output if name == 'CONOUT$' else io.StringIO('WRITE VAR\r\n')
+    monkeypatch.setattr(jibo_dfu.sys, 'stdin', SimpleNamespace(isatty=lambda: False))
+    monkeypatch.setattr(jibo_dfu.os, 'name', 'nt')
+    monkeypatch.setattr('builtins.open', console)
+    assert jibo_dfu._confirm_write() is True
+    assert calls == [('CONOUT$', 'w'), ('CONIN$', 'r')]
+    assert 'WRITE VAR' in output.getvalue()

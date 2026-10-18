@@ -79,7 +79,7 @@ native job. Download its `BEetle-Windows-x64` artifact after the checks pass.
 There is no Linux payload, WSL image, USB sharing service or virtualization setup.
 
 For a local Windows build, install Python 3.12 x64 and a **build-only** Cygwin root
-with `gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core`.
+with `gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++`.
 The workflow uses the official Cygwin installation action. Then run:
 
 ```powershell

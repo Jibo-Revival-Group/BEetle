@@ -289,7 +289,7 @@ def inspect_var(image):
     image = Path(image).expanduser().resolve()
     if not image.is_file():
         raise ImageError("Var image does not exist: " + str(image))
-    with tempfile.TemporaryDirectory(prefix="jibo-inspect-", dir="/tmp") as temp:
+    with tempfile.TemporaryDirectory(prefix="jibo-inspect-") as temp:
         working = Path(temp) / "var.img"
         shutil.copyfile(image, working)
         repaired = _replay_journal_on_copy(working)
@@ -309,7 +309,7 @@ def edit_mode(source, destination, mode):
         raise ImageError("Mode must be one of: " + ", ".join(MODE_VALUES))
     source, destination, repaired = _copy_for_edit(source, destination)
     try:
-        with tempfile.TemporaryDirectory(prefix="jibo-mode-", dir="/tmp") as temp:
+        with tempfile.TemporaryDirectory(prefix="jibo-mode-") as temp:
             current_raw = _extract(destination, VAR_MODE_PATH, Path(temp) / "mode.json")
             data = _json_mode(current_raw)
             previous = data["mode"]
@@ -752,7 +752,7 @@ def edit_wifi(source, destination, ssid, password=None, open_network=False,
               compact=False):
     source, destination, repaired = _copy_for_edit(source, destination)
     try:
-        with tempfile.TemporaryDirectory(prefix="jibo-wifi-", dir="/tmp") as temp:
+        with tempfile.TemporaryDirectory(prefix="jibo-wifi-") as temp:
             existing = _extract(destination, VAR_WIFI_PATH, Path(temp) / "wifi.conf", optional=True)
             replacement, count = build_wifi_config(existing, ssid, password,
                                                    open_network, compact=compact)
@@ -793,7 +793,7 @@ def edit_mode_wifi(source, destination, mode, ssid, password=None,
         raise ImageError("Mode must be one of: " + ", ".join(MODE_VALUES))
     source, destination, repaired = _copy_for_edit(source, destination)
     try:
-        with tempfile.TemporaryDirectory(prefix="jibo-mode-wifi-", dir="/tmp") as temp:
+        with tempfile.TemporaryDirectory(prefix="jibo-mode-wifi-") as temp:
             work = Path(temp)
             mode_data = _json_mode(_extract(destination, VAR_MODE_PATH, work / "mode.json"))
             previous = mode_data["mode"]
@@ -838,7 +838,7 @@ def edit_boot_network_status(source, destination, action):
     """Install/remove without changing mode or saved networks on one var copy."""
     source, destination, repaired = _copy_for_edit(source, destination)
     try:
-        with tempfile.TemporaryDirectory(prefix="jibo-boot-status-", dir="/tmp") as temp:
+        with tempfile.TemporaryDirectory(prefix="jibo-boot-status-") as temp:
             mode = _json_mode(_extract(destination, VAR_MODE_PATH, Path(temp) / "mode"))["mode"]
             expected = _apply_boot_network_status(destination, temp, action, mode)
             _replay_journal_on_copy(destination)

@@ -185,8 +185,12 @@ def build_windows(build, cygwin):
     build.run(*args, ROOT / 'scripts/release/windows_launcher.py')
     binary = out / 'BEetle-Windows-x64.exe'
     build.verify_windows_executable(binary)
+    # Installed compiler/Cygwin directories must not conceal a missing runtime DLL.
+    clean_environment = dict(os.environ)
+    clean_environment['PATH'] = str(Path(os.environ['SystemRoot']) / 'System32')
     for mode in ('--version', '--self-check', '--gui-smoke', '--filesystem-smoke'):
-        build.run(binary, mode, '--output', out / ('windows-' + mode[2:] + '.txt'))
+        build.run(binary, mode, '--output', out / ('windows-' + mode[2:] + '.txt'),
+                  env=clean_environment)
     shutil.copy2(licenses / 'toolkit-source.tar.gz', out / 'BEetle-corresponding-source.tar.gz')
     with tarfile.open(out / 'BEetle-Windows-sources.tar.gz', 'w:gz') as archive:
         archive.add(licenses, arcname='licenses')

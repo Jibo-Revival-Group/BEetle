@@ -1760,6 +1760,22 @@ def backup_var(port=None, dfu_util=None, out=None, refresh=False, expected_ident
             "operation_directory": str(directory), "profile": record["profile"]}
 
 
+def _terminal_input(prompt):
+    if sys.stdin.isatty():
+        return input(prompt)
+    if os.name == "nt":
+        # Windows exposes distinct console input and output devices.
+        with open("CONOUT$", "w", encoding="utf-8") as output:
+            output.write(prompt)
+            output.flush()
+        with open("CONIN$", "r", encoding="utf-8") as terminal:
+            return terminal.readline().rstrip("\r\n")
+    with open("/dev/tty", "r+", encoding="utf-8") as terminal:
+        terminal.write(prompt)
+        terminal.flush()
+        return terminal.readline().rstrip("\r\n")
+
+
 def _confirm_write(supplied=None, plan=None):
     if callable(supplied):
         try:
@@ -1772,13 +1788,7 @@ def _confirm_write(supplied=None, plan=None):
         return True
     prompt = "Type WRITE VAR to write the edited var partition: "
     try:
-        if sys.stdin.isatty():
-            response = input(prompt)
-        else:
-            with open("CONIN$" if os.name == "nt" else "/dev/tty", "r+", encoding="utf-8") as terminal:
-                terminal.write(prompt)
-                terminal.flush()
-                response = terminal.readline().rstrip("\r\n")
+        response = _terminal_input(prompt)
     except OSError as exc:
         raise DfuError("A typed confirmation is required. Re-run with --confirm 'WRITE VAR'.") from exc
     if response != WRITE_CONFIRMATION:
@@ -2473,7 +2483,7 @@ def read_partition_file_live(path, partition="var", port=None, dfu_util=None):
     _validate_file_path(path)
     dfu_util = dfu_util or tool("dfu-util")
     port, _, _, _ = _file_loader_context(port, dfu_util, (partition,), False)
-    with tempfile.TemporaryDirectory(prefix="jibo-file-read-", dir="/tmp") as temp:
+    with tempfile.TemporaryDirectory(prefix="jibo-file-read-") as temp:
         return _read_partition_file_rpc(dfu_util, port, partition, path, temp)
 
 
@@ -2482,7 +2492,7 @@ def stat_partition_file_live(path, partition="var", port=None, dfu_util=None):
     _validate_file_path(path)
     dfu_util = dfu_util or tool("dfu-util")
     port, _, _, _ = _file_loader_context(port, dfu_util, (partition,), False)
-    with tempfile.TemporaryDirectory(prefix="jibo-file-stat-", dir="/tmp") as temp:
+    with tempfile.TemporaryDirectory(prefix="jibo-file-stat-") as temp:
         details = _stat_partition_file_rpc(dfu_util, port, partition, path, temp)
     return {"status": "stat", "partition": partition, "path": path,
             "permissions_octal": format(stat.S_IMODE(details["mode"]), "04o"),
@@ -2572,7 +2582,7 @@ class FileTransaction:
                   "device_tag": device_tag, "partitions": list(touched),
                   "backups": {}, "writes": [], "status": "preparing baselines"}
         _private_write(record_path, record)
-        request_dir = Path(tempfile.mkdtemp(prefix="jibo-file-rpc-", dir="/tmp"))
+        request_dir = Path(tempfile.mkdtemp(prefix="jibo-file-rpc-"))
         os.chmod(request_dir, 0o700)
         try:
             if self.guided:
@@ -2746,13 +2756,7 @@ def _confirm_file_write(supplied=None, plan=None):
     if supplied is not None:
         return bool(supplied)
     try:
-        if sys.stdin.isatty():
-            response = input("Apply these file replacements? [y/N] ").strip().lower()
-        else:
-            with open("CONIN$" if os.name == "nt" else "/dev/tty", "r+", encoding="utf-8") as terminal:
-                terminal.write("Apply these file replacements? [y/N] ")
-                terminal.flush()
-                response = terminal.readline().strip().lower()
+        response = _terminal_input("Apply these file replacements? [y/N] ").strip().lower()
     except OSError as exc:
         raise DfuError("Use --yes or an interactive terminal confirmation before writing files.") from exc
     return response in ("y", "yes")

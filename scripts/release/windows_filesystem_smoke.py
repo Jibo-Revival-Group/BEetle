@@ -25,6 +25,11 @@ def filesystem_smoke(runtime):
         jibo_images._replace_file(image, '/jibo/mode.json', changed, folder)
         assert jibo_images._extract(image, '/jibo/mode.json', folder / 'read back.json') == changed
         jibo_images._check_ext4(image)
+        assert jibo_images.inspect_var(image)['mode'] == 'int-developer'
+        edited = folder / 'edited var.img'
+        jibo_images.edit_mode(image, edited, 'normal')
+        assert jibo_images.inspect_var(edited)['mode'] == 'normal'
+        assert jibo_images.inspect_var(image)['mode'] == 'int-developer'
         subprocess.run([str(tools / ('resize2fs' + exe)), '-f', str(image), '16384K'], check=True)
         jibo_images._check_ext4(image)
         assert jibo_images._extract(image, '/jibo/mode.json', folder / 'after resize.json') == changed
