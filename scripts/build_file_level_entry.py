@@ -151,7 +151,7 @@ def prepare_source(repository, work, size, sha, patch_path):
     run("git", "apply", str(patch_path), cwd=work)
 
     header = work / "include/dfu_stage2_protocol.h"
-    original = header.read_text()
+    original = header.read_text(encoding="utf-8")
     if original.count(PINNED_SIZE) != 1 or original.count(PINNED_HASH) != 1:
         raise RuntimeError("the ShofEL stage protocol does not match the pinned baseline")
     candidate_hash = ",\n".join(
@@ -165,18 +165,18 @@ def prepare_source(repository, work, size, sha, patch_path):
     updated = updated.replace(
         "/* SHA-256 of the current signed-skills-bundle-20260923/loader.bin. */",
         "/* SHA-256 of the manifest-checked experimental file-RPC loader. */")
-    header.write_text(updated)
+    header.write_text(updated, encoding="utf-8", newline="\n")
 
     # The stage payload also carried a private copy of the original hash.
     # Make its request and readback checks use the shared protocol value.
     payload = work / "payloads/dfu_stage2.c"
-    source = payload.read_text()
+    source = payload.read_text(encoding="utf-8")
     pinned_array = "static const u8 expected_sha256[32] = {\n" + PINNED_HASH + "\n};\n"
     if source.count(pinned_array) != 1 or source.count("expected_sha256[i]") != 2:
         raise RuntimeError("the stage payload does not match the pinned hash baseline")
     source = source.replace(pinned_array, "")
     source = source.replace("expected_sha256[i]", "DFU_STAGE2_EXPECTED_SHA256[i]")
-    payload.write_text(source)
+    payload.write_text(source, encoding="utf-8", newline="\n")
 
 
 def main():

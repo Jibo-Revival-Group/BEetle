@@ -43,7 +43,7 @@ jobs:
       - uses: cygwin/cygwin-install-action@v6
         id: cygwin
         with:
-          packages: gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core
+          packages: gcc-core make binutils git patch pkg-config mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++
           add-to-path: false
       - name: Build and verify native single EXE
         run: |
