@@ -21,6 +21,7 @@ def load(name):
 
 
 def test_windows_launches_same_gui_directly_without_system_setup(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'path', sys.path.copy())
     launcher, manifest = load('windows_launcher'), load('manifest')
     (tmp_path / 'jibo_dfu.py').write_text('# synthetic runtime')
     manifest.write_manifest(tmp_path, 'a' * 40)

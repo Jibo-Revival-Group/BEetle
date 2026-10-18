@@ -2,6 +2,7 @@
 import ast
 from dataclasses import asdict
 import io
+import sys
 import json
 from pathlib import Path
 import threading
@@ -43,7 +44,7 @@ def test_private_flows_do_not_change_tui_prompt_functions():
     c, _ = controller()
     assert c.flows is not jibo_tui
     assert tuple(getattr(jibo_tui, name) for name in core.PROMPT_PRIMITIVES) == original
-    tree = ast.parse(Path(jibo_tui.__file__).read_text())
+    tree = ast.parse(Path(jibo_tui.__file__).read_text(encoding="utf-8"))
     curses_prompts = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)
                       and any(isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
                               and isinstance(call.func.value, ast.Name) and call.func.value.id == "curses"
@@ -366,7 +367,8 @@ def test_launch_missing_tk_is_actionable_without_calling_device_api():
     with patch("builtins.__import__", side_effect=missing_tk), \
             patch.object(core, "_terminal_available", return_value=False):
         assert core.launch(api, stream=stream) == 2
-    assert "python3-tk" in stream.getvalue() and "text menu" in stream.getvalue()
+    assert "text menu" in stream.getvalue()
+    assert ("tcl/tk" if sys.platform == "win32" else "python-tk@" if sys.platform == "darwin" else "python3-tk") in stream.getvalue()
     assert not api.calls
 
 
