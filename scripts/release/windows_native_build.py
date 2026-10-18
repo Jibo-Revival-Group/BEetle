@@ -90,9 +90,10 @@ def runtime_sources(cygwin, libraries, destination, download):
     sources = parse_cygwin_sources(metadata.decode())
     packages = {}
     for file in libraries:
-        owner = subprocess.check_output([str(cygwin / 'bin/cygcheck.exe'), '-f', str(file)], text=True).strip()
+        posix = subprocess.check_output([str(cygwin / 'bin/cygpath.exe'), '-u', str(file)], text=True).strip()
+        owner = subprocess.check_output([str(cygwin / 'bin/cygcheck.exe'), '-f', posix], text=True).strip()
         if not owner or owner not in sources:
-            raise RuntimeError('No matching corresponding source for bundled DLL: ' + str(file))
+            raise RuntimeError('No matching corresponding source for bundled DLL: ' + str(file) + ' (owner: ' + repr(owner) + ')')
         packages[owner] = sources[owner]
     for owner, (url, size, sha512) in packages.items():
         target = destination / Path(url).name
