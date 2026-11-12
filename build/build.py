@@ -68,7 +68,8 @@ def windows_tools(out):
     WORK.mkdir(exist_ok=True)
     archive = download(*LIBUSB_WINDOWS, WORK / "libusb-windows.7z")  # libusb's official Windows build
     libusb = WORK / "libusb-windows"
-    run("7z", "x", "-y", "-o" + str(libusb), archive)
+    # Only the MinGW parts: Ubuntu's older 7-Zip can't unpack the ARM64 builds in the archive.
+    run("7z", "x", "-y", "-o" + str(libusb), archive, "include", "MinGW64", "-r-")
     run(sys.executable, ROOT / "build/shofel.py", out, "--windows", libusb)
     dfu_util = source("dfu-util")
     run("patch", "-p1", "-i", ROOT / "build/patches/dfu-util-usbdk.patch", cwd=dfu_util)
