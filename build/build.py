@@ -108,6 +108,18 @@ def tools():
     if sys.platform == "darwin":
         shofel += ["--libusb-prefix", prefix]
     run(*shofel)
+    if sys.platform == "darwin":
+        # Point the tools at the bundled libusb instead of the build folder, then re-sign them.
+        bundled = "@executable_path/../lib/" + LIBUSB
+        run("install_name_tool", "-id", bundled, DFU / "lib" / LIBUSB)
+        run("codesign", "-f", "-s", "-", DFU / "lib" / LIBUSB)
+        for name in ("dfu-util", "shofel2_t124"):
+            binary = DFU / "tools" / name
+            for line in subprocess.check_output(["otool", "-L", str(binary)], text=True).splitlines()[1:]:
+                linked = line.strip().split(" (")[0]
+                if "libusb" in linked:
+                    run("install_name_tool", "-change", linked, bundled, binary)
+            run("codesign", "-f", "-s", "-", binary)
 
 
 def windows_runtime(windows_tools_dir):
