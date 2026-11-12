@@ -1,0 +1,8 @@
+.build/
+release-out/
+windows-tools/
+windows/
+dfu/tools/
+dfu/lib/
+__pycache__/
+*.pyc

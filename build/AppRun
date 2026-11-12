@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# BEetle AppImage launcher (from the DFU Mod Toolkit's): Jibo's USB needs administrator access on Linux.
+set -euo pipefail
+appdir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+case ${1:-} in
+  --version|--self-check) exec "$appdir/BEetle" "$@" ;;
+esac
+if (( EUID == 0 )); then exec "$appdir/BEetle" "$@"; fi
+# Root cannot read a normal user's FUSE mount, so run from a copy.
+stage=
+if [[ -n ${APPIMAGE:-} ]]; then
+  stage=$(mktemp -d /tmp/beetle-launch.XXXXXXXX)
+  trap 'rm -rf -- "$stage"' EXIT
+  cp -a "$appdir/." "$stage/"
+  appdir=$stage
+fi
+if command -v pkexec >/dev/null 2>&1; then
+  pkexec env DISPLAY="${DISPLAY:-}" XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}" \
+    WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" \
+    SUDO_UID="$(id -u)" SUDO_GID="$(id -g)" "$appdir/BEetle" "$@"
+elif command -v sudo >/dev/null 2>&1; then
+  sudo --preserve-env=DISPLAY,XAUTHORITY,WAYLAND_DISPLAY,XDG_RUNTIME_DIR "$appdir/BEetle" "$@"
+else
+  printf 'BEetle needs administrator access for USB. Install a polkit agent (pkexec) or run it with sudo.\n' >&2
+  exit 1
+fi
