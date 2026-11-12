@@ -84,7 +84,18 @@ jobs:
       - uses: actions/download-artifact@v4
         with: {name: windows-tools, path: windows-tools}
       - uses: cygwin/cygwin-install-action@v4
-        with: {packages: e2fsprogs, install-dir: 'C:\cygwin'}
+        with: {packages: gcc-core make, install-dir: 'C:\cygwin'}
+      - name: Build e2fsprogs 1.47.1 with Cygwin
+        shell: C:\cygwin\bin\bash.exe --login -eo pipefail -o igncr '{0}'
+        run: |
+          cd /tmp
+          curl -fsSLO https://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.47.1/e2fsprogs-1.47.1.tar.gz
+          echo "0d2e0bf80935c3392b73a60dbff82d8a6ef7ea88b806c2eea964b6837d3fd6c2  e2fsprogs-1.47.1.tar.gz" | sha256sum -c
+          tar xzf e2fsprogs-1.47.1.tar.gz && cd e2fsprogs-1.47.1
+          ./configure --prefix=/opt/e2fsprogs --disable-nls --disable-fuse2fs --disable-uuidd \
+            --without-udev-rules-dir --without-systemd-unit-dir --without-crond-dir
+          make -j4 && make install
+          /opt/e2fsprogs/sbin/debugfs -V
       - uses: actions/setup-python@v6
         with: {python-version: '3.12', architecture: x64}
       - run: python -m pip install pyinstaller==6.16.0 paramiko pillow
@@ -93,9 +104,7 @@ jobs:
         shell: pwsh
         env: {BEETLE_REQUIRE_E2FS: '1'}
         run: |
-          $mke2fs = Get-ChildItem C:\cygwin -Recurse -Filter mke2fs.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          Write-Host "mke2fs: $($mke2fs.FullName)"
-          $env:PATH = "$pwd\dfu\tools;$($mke2fs.DirectoryName);$env:PATH"
+          $env:PATH = "$pwd\dfu\tools;C:\cygwin\opt\e2fsprogs\sbin;$env:PATH"
           python -m unittest tests.test_flow tests.test_var_edit -v
       - run: python build/build.py freeze
       - name: Check the exe

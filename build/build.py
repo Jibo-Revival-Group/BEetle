@@ -3,7 +3,7 @@
 
   build.py windows-tools OUT   (Linux + MinGW) ShofEL host and dfu-util for Windows
   build.py tools               native dfu-util, e2fsprogs, libusb and ShofEL into dfu/tools, dfu/lib
-  build.py windows-runtime     (Windows + Cygwin) debugfs/e2fsck and the UsbDk driver installer
+  build.py windows-runtime     (Windows) the cross-built tools, Cygwin-built debugfs/e2fsck, the UsbDk installer
   build.py freeze              PyInstaller, then the .exe / .app (zipped) / .AppImage in release-out/
 """
 import hashlib
@@ -119,9 +119,11 @@ def windows_runtime(windows_tools_dir):
     for name in ("shofel2_t124.exe", "intermezzo.bin", "dfu_stage2.bin", "dfu-util.exe"):
         shutil.copy2(built / name, tools_dir)
     shutil.copy2(built / "libusb-1.0.dll", lib)
+    # e2fsprogs 1.47.1 built under Cygwin by CI (Cygwin's own package is older, and its debugfs
+    # `write` can't take a path inside the image, which the toolkit relies on).
     cygwin = Path(os.environ.get("CYGWIN_ROOT", r"C:\cygwin"))
     for name in ("debugfs.exe", "e2fsck.exe"):
-        exe = next(p for p in (cygwin / "usr/sbin" / name, cygwin / "sbin" / name, cygwin / "bin" / name) if p.is_file())
+        exe = cygwin / "opt/e2fsprogs/sbin" / name
         shutil.copy2(exe, tools_dir)
         print("bundled", exe, flush=True)
         listing = subprocess.check_output([str(cygwin / "bin/cygcheck.exe"), str(exe)], text=True)
