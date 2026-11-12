@@ -123,11 +123,13 @@ def windows_runtime(windows_tools_dir):
     for name in ("debugfs.exe", "e2fsck.exe"):
         exe = next(p for p in (cygwin / "usr/sbin" / name, cygwin / "sbin" / name, cygwin / "bin" / name) if p.is_file())
         shutil.copy2(exe, tools_dir)
+        print("bundled", exe, flush=True)
         listing = subprocess.check_output([str(cygwin / "bin/cygcheck.exe"), str(exe)], text=True)
         for line in listing.splitlines():
             dll = Path(line.strip())
             if dll.suffix.lower() == ".dll" and str(cygwin).lower() in str(dll).lower():
                 shutil.copy2(dll, tools_dir)
+                print("bundled", dll, flush=True)
     (ROOT / "windows").mkdir(exist_ok=True)
     download(*USBDK, ROOT / "windows/UsbDk_x64.msi")
 

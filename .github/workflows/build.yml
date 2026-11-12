@@ -93,7 +93,9 @@ jobs:
         shell: pwsh
         env: {BEETLE_REQUIRE_E2FS: '1'}
         run: |
-          $env:PATH = "$pwd\dfu\tools;C:\cygwin\sbin;$env:PATH"
+          $mke2fs = Get-ChildItem C:\cygwin -Recurse -Filter mke2fs.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          Write-Host "mke2fs: $($mke2fs.FullName)"
+          $env:PATH = "$pwd\dfu\tools;$($mke2fs.DirectoryName);$env:PATH"
           python -m unittest tests.test_flow tests.test_var_edit -v
       - run: python build/build.py freeze
       - name: Check the exe
