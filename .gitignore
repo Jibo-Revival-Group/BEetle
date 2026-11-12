@@ -6,3 +6,4 @@ dfu/tools/
 dfu/lib/
 __pycache__/
 *.pyc
+e2fs/

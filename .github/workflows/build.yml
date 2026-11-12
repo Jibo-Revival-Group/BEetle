@@ -99,8 +99,11 @@ jobs:
           ./configure --prefix=/opt/e2fsprogs --disable-nls --disable-fuse2fs --disable-uuidd \
             --without-udev-rules-dir --without-systemd-unit-dir --without-crond-dir \
             CFLAGS="-O2 -include io.h" PKG_CONFIG=/usr/bin/false
-          make -j4 && make install
-          /opt/e2fsprogs/sbin/debugfs -V
+          make -j4
+          # Copy the built tools instead of `make install` (the runner's Cygwin /opt is read-only).
+          out=$(cygpath -u "$GITHUB_WORKSPACE")/e2fs && mkdir -p "$out"
+          cp debugfs/debugfs.exe e2fsck/e2fsck.exe misc/mke2fs.exe "$out/"
+          "$out/debugfs.exe" -V
       - uses: actions/setup-python@v6
         with: {python-version: '3.12', architecture: x64}
       - run: python -m pip install pyinstaller==6.16.0 paramiko pillow
@@ -109,7 +112,7 @@ jobs:
         shell: pwsh
         env: {BEETLE_REQUIRE_E2FS: '1'}
         run: |
-          $env:PATH = "$pwd\dfu\tools;C:\cygwin\opt\e2fsprogs\sbin;$env:PATH"
+          $env:PATH = "$pwd\dfu\tools;$pwd\e2fs;C:\cygwin\bin;$env:PATH"
           python -m unittest tests.test_flow tests.test_var_edit -v
       - run: python build/build.py freeze
       - name: Check the exe

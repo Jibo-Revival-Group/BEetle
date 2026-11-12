@@ -135,7 +135,7 @@ def windows_runtime(windows_tools_dir):
     # `write` can't take a path inside the image, which the toolkit relies on).
     cygwin = Path(os.environ.get("CYGWIN_ROOT", r"C:\cygwin"))
     for name in ("debugfs.exe", "e2fsck.exe"):
-        exe = cygwin / "opt/e2fsprogs/sbin" / name
+        exe = ROOT / "e2fs" / name  # built by CI with Cygwin
         shutil.copy2(exe, tools_dir)
         print("bundled", exe, flush=True)
         listing = subprocess.check_output([str(cygwin / "bin/cygcheck.exe"), str(exe)], text=True)
