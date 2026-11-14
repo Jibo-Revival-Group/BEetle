@@ -307,6 +307,8 @@ The toolkit's ShofEL entry now selects the official Meerkat Rev02 **RAM slot 2 o
 
 ## License
 
+Copyright (c) 2026 Zane V.
+
 The BEetle — 5x1 Setup Toolkit is free software under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may use, study, change and share it. If you distribute it or a modified version, including inside another project, you must keep the copyright and license notices, release your version under the GPL-3.0, and publish its complete source.
 
 U-Boot, ShofEL2 and the stock robot files the toolkit modifies keep their own licenses; [NOTICE.md](NOTICE.md) lists which parts they cover.
