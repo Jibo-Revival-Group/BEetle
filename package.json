@@ -32,7 +32,12 @@
       "ui/**",
       "web/**",
       "build/icon.png",
-      "LICENSE"
+      "LICENSE",
+      "!node_modules/cpu-features/**",
+      "!node_modules/buildcheck/**",
+      "!node_modules/nan/**",
+      "!node_modules/ssh2/lib/protocol/crypto/build/**",
+      "!node_modules/ssh2/lib/protocol/crypto/src/**"
     ],
     "directories": {
       "output": "dist",
