@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+    <title>Convert a Jibo – BEetle</title>
+    <link rel="stylesheet" href="look.css">
+    <style>
+        main { max-width: 760px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; min-height: 100vh; }
+        .back { align-self: flex-start; background: none; border: 0; color: var(--muted); padding: 6px 0; }
+        .back:hover { color: var(--text); }
+        h1 { margin: 10px 0 6px; font-size: 28px; }
+        .row { display: flex; gap: 10px; margin-top: 18px; }
+        .row .field { flex: 1; display: flex; align-items: center; padding: 0 18px; border-radius: 22px; }
+        .row input { flex: 1; font-size: 16px; height: 48px; }
+        .row .green { height: 50px; }
+        #status { margin: 16px 4px 0; font-size: 15px; min-height: 1.2em; }
+        #log { flex: 1; min-height: 240px; margin: 14px 0 0; padding: 14px 16px; border-radius: 22px; overflow: auto; white-space: pre-wrap;
+            font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: text; }
+    </style>
+</head>
+<body>
+<main>
+    <button class="back" id="back">‹ All robots</button>
+    <h1>Convert a Jibo</h1>
+    <div class="muted">Installs 5x1 (BEam and BEnch) on a Jibo that has already been modded, then restarts him. Keep BEetle open; it takes several minutes.</div>
+    <form class="row" id="form">
+        <span class="field glass"><input id="address" placeholder="Jibo's IP address" autocomplete="off" spellcheck="false" aria-label="Jibo's IP address"></span>
+        <button class="green" id="go" type="submit">Convert to 5x1</button>
+    </form>
+    <div id="status" class="muted" role="status"></div>
+    <pre id="log" class="glass" hidden></pre>
+</main>
+<script src="convert.js"></script>
+</body>
+</html>

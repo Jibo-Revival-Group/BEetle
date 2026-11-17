@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real BEacon page for the app check
+        uses: actions/checkout@v4
+        with:
+          repository: Jibo-Revival-Group/BEam
+          ref: beta
+          path: beam
+          sparse-checkout: '@be/be/beacon/public'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (finder, conversion against a stand-in SSH Jibo)
+        run: npm test
+      - name: App check (BEacon in BEep's look, tabs, conversion)
+        run: xvfb-run -a sh ci/app-check.sh "$PWD/beam/@be/be/beacon/public"
+
+  build:
+    needs: check
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-builder --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BEetle-${{ runner.os }}
+          path: |
+            dist/*.AppImage
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l out
+          gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "BEetle ${GITHUB_REF_NAME#v}" \
+            --notes "BEep for your computer. Download the file for your system below; see the README for first-launch steps."

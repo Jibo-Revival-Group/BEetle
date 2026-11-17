@@ -1,0 +1,75 @@
+{
+  "name": "beetle",
+  "productName": "BEetle",
+  "version": "2.0.0",
+  "description": "BEep for your computer: find Jibo on your network, open BEacon in the 5x1 look, and convert a modded Jibo to 5x1.",
+  "main": "main.js",
+  "author": "Zane V <zane@jiborevival.com>",
+  "license": "AGPL-3.0-only",
+  "homepage": "https://5x1.com",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.js",
+    "check": "electron . --check",
+    "dist": "electron-builder --publish never"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "electron": "^45.3.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.jiborevival.beetle",
+    "productName": "BEetle",
+    "files": [
+      "main.js",
+      "finder.js",
+      "conversion.js",
+      "preload.js",
+      "page-preload.js",
+      "ui/**",
+      "web/**",
+      "build/icon.png",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "artifactName": "BEetle-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": true
+    },
+    "portable": {
+      "artifactName": "BEetle-${version}-windows-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "identity": null
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    },
+    "npmRebuild": false
+  },
+  "desktopName": "BEetle.desktop"
+}

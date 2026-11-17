@@ -1,314 +1,41 @@
-# BEetle — 5x1 Setup Toolkit
+# BEetle
 
-> **Part of [5x1](https://www.5x1.com), the free public Jibo server and the easiest and quickest way for beginners to revive Jibo: unlike other services, there is no account to set up, and no self-hosting.** BEetle is the desktop setup toolkit that prepares a Jibo over USB and connects him to 5x1.
-> New to Jibo revival? Start with [How do I revive my Jibo?](https://www.5x1.com/revive-jibo.html) and the [setup guide](https://jibo.guide). See also [Is 5x1 safe?](https://www.5x1.com/is-5x1-safe.html) and the [privacy policy](https://www.5x1.com/privacy.html).
+BEep for your computer. BEetle finds Jibo on your network and opens BEacon, his control panel, in the 5x1 look, with BEep's tabs down the side. It can also turn a modded Jibo into a 5x1 Jibo.
 
-Native **AppImage**, **macOS .app**, and **Windows .exe** build instructions are in [Building native applications](docs/release.md). The Windows EXE bundles its host dependencies for setup without extra downloads.
+- Finds every Jibo with BEacon on your network by itself, and remembers them.
+- With one robot, it opens straight into BEacon.
+- Add a robot by IP address if it isn't found (Jibo shows his IP in Settings › Wi-Fi).
+- All of BEacon: Status, Screen, Photos, People, Reports, Store, Server and Settings.
+- Downloads (like Jibo's photos) ask where to save; uploads use your computer's file picker.
+- Convert a Jibo to 5x1: for a Jibo that has already been modded, BEetle logs in over SSH and runs the 5x1 install, showing its progress. The install keeps going on Jibo even if BEetle closes; opening it again picks up where it left off.
 
-A local 5x1 fork of Paskooter’s Jibo DFU Mod Toolkit. Upstream history, licensing, loader pins, advanced tools and backup formats are retained; see [fork provenance](FORK.md).
+## Download
 
-The app opens a guided wizard. Choose **Start or resume setup** to enter USB recovery, save backups, set `int-developer` mode and Wi-Fi, and show the IP on Jibo’s boot screen. It then runs normal PM over SSH for provisioned robots, or the external OOBE PM script from GitHub for OOBE robots. PM owns installation and reboot; its implementation is not embedded in the installer. See [setup and recovery](docs/setup-5x1.md).
+Get the file for your computer from the [latest release](https://github.com/Jibo-Revival-Group/BEetle/releases/latest):
 
-```sh
-python3 scripts/install_setup_deps.py
-python3 jibo_dfu.py setup-5x1 --session ~/Jibo-Backups/beetle-5x1-session.json
-```
+- **Windows:** `BEetle-…-win-x64.exe` installs BEetle; `BEetle-…-windows-portable.exe` runs without installing. Windows may say it "protected your PC" because BEetle isn't signed: click **More info**, then **Run anyway**.
+- **Mac:** `BEetle-…-mac-universal.zip` (Apple silicon and Intel). Unzip it and move BEetle to Applications. The first time, right-click BEetle and choose **Open**, then **Open** again, because it isn't notarized by Apple.
+- **Linux:** `BEetle-…-linux-x86_64.AppImage`. Make it executable (`chmod +x`) and run it.
 
-New 5x1 setup has automated fixture coverage; live OOBE/provisioned robot validation is still required. Historical hardware results below refer to upstream DFU features.
+Your computer must be on the same network as Jibo, and Jibo needs BEam with BEacon.
 
-A guided graphical toolkit for Jibo USB recovery, backups, mode and Wi-Fi settings, and official update packages. Start with the GUI on **Windows through WSL 2 + WSLg + usbipd-win** or **Linux**; a native **macOS** launcher is also available. The original text menu and scripting commands remain available.
-
-## Start the GUI
-
-Clone or download this repository, extract it if needed, and keep the launchers in the toolkit folder. Complete the linked platform setup before launching:
-
-| Platform | Double-click in the toolkit folder | Launch from a terminal | Prerequisites |
-| --- | --- | --- | --- |
-| **Windows x64** | `run-gui.cmd` | `.\run.ps1 -Gui -Distro Ubuntu-22.04` | [WSL 2, Ubuntu, WSLg and usbipd-win](#windows-with-wsl) |
-| **macOS Intel / Apple silicon** | `BEetle.command` | `./run.sh --gui` | [Native Python with matching Tk, Homebrew/MacPorts tools](#macos); Intel tested, Apple silicon **experimental** |
-| **Linux x86_64** | `BEetle.desktop` | `./run.sh --gui` | [Python/Tk, a graphical desktop and USB administrator access](#linux-quick-start) |
-
-Linux file managers may require **Allow Launching** or **Trust** for the `.desktop` file. On macOS, Finder may require **Open** for the `.command` file; it is not a signed/notarized app. First launch may need internet access to build the host tools and may open a terminal for setup or authorization. **Host setup authorization is not consent to write a robot**: each device change has its own review.
-
-### GUI screenshots
-
-![DFU-ready action screen](docs/images/gui/ready.png)
-
-*DFU-ready action screen. USB readiness and available operations are shown together.*
-
-<details>
-<summary>Mode/Wi-Fi setup, safety review and progress screenshots</summary>
-
-![Mode selection before Wi-Fi setup](docs/images/gui/mode-wifi.png)
-
-*Mode/Wi-Fi setup. Select the mode before entering the network settings; nothing is written at this step.*
-
-![Mode and Wi-Fi write review](docs/images/gui/review.png)
-
-*Write review. Check the target, hashes and rollback backup; Cancel is the default and Confirm requires explicit approval.*
-
-![Var backup progress](docs/images/gui/progress.png)
-
-*Backup progress. Follow the current stage, percentage and operation log.*
-
-</details>
-
-### USB workflow and safety
-
-1. Put one robot in **RCM/APX** (`0955:7740`). The toolkit uses ShofEL to load its recovery program into RAM.
-2. The robot reappears in **DFU** (`0955:701a`). All partition reads and writes use DFU. ShofEL is used only for the RCM-to-DFU entry step.
-
-The GUI enables DFU entry in RCM and partition actions only after the recovery loader is ready in DFU. It shares the text menu's device operations, validation, backups and per-write review, including the ON-by-default boot-network checkbox for developer mode + Wi-Fi setup. It shows USB state and progress, refuses duplicate starts, and does not allow window closure during a transfer. **Keep USB connected and wait for completion**; forcibly killing the app can still interrupt a transfer. Read the [hardware limitations](#hardware-results-and-remaining-work) and [boot-screen diagnostic caveats](#boot-screen-wi-fiip-diagnostic-usb-only-setup) before proceeding.
-
-On Linux, the `.pyz` package is generated locally and reused on later runs; on macOS, the launcher runs the Python source directly. See [GUI setup, safety and verification](docs/gui.md) for details.
-
-### Text menu (alternate)
-
-For the original text menu, run `./run.sh` on Linux/macOS or `.\run.ps1 -Distro Ubuntu-22.04` on Windows. The launchers without a GUI flag still open the text menu. Both interfaces use the same backend and safety checks. See [using the toolkit](#using-the-toolkit) and [manual build and scripting](#manual-build-and-scripting).
-
-## Compatibility
-
-**Any stock Jibo that has never been modified is supported with 100% certainty.** I have personally tested every stock firmware version and all stock files. Windows, Linux and Intel Macs have also been tested; Apple silicon Macs are experimental.
-
-If your robot was previously changed by another mod system, it will most likely work with no changes, but that cannot be guaranteed: there is no way to foresee changes someone else made. If it doesn't work, ask in the [Jibo Revival Group Discord](https://discord.gg/CBVJzkRGwN). I'm happy to help.
-
-## Quick path: stock Jibo to int-developer
-
-If you are here to mod a stock robot, use the guided menu to change its existing installation to `int-developer` mode. **If the robot has not joined your Wi-Fi yet, configure Wi-Fi in the toolkit too:** changing the mode alone does not give it a network connection.
-
-1. Start the GUI with `./run.sh --gui` on Linux or macOS, or `.\run.ps1 -Gui -Distro Ubuntu-22.04` from PowerShell on a Windows PC with WSL 2 + WSLg. The double-click entries above open the same window. Connect one robot by USB and put it in RCM/APX mode.
-2. Choose **Enter DFU with ShofEL (RAM loader)**. Wait for the menu to show the robot in DFU. The included Meerkat Rev02 entry selects RAM slot 2 or 3 from the hardware strap; slot 3 has only offline checks so far. See [hardware coverage](#hardware-results-and-remaining-work) for other revisions.
-3. If the robot already has your Wi-Fi saved, choose **Set robot mode** and select **int-developer**. If it has never connected to your Wi-Fi, choose **Set mode and configure Wi-Fi**, select **int-developer**, then enter your Wi-Fi name and password twice. That action applies both settings together. If a saved Wi-Fi password is wrong, choose **Add or update a Wi-Fi network** and enter the same SSID with the corrected password.
-4. Review and confirm the change. The toolkit saves or reuses a `var` rollback backup and checks the result. After a fresh RTM flash, the stock Wi-Fi and network startup files can be too large for the quick editor; if the menu offers a full `var` transfer, choose it and leave the robot connected until readback finishes. Setting Wi-Fi also prepares startup to skip the retired Jibo server check that can disconnect an otherwise working network. On RTM2, it applies the later TI radio settings too. These changes take effect when the robot restarts; flashing alone does not make them.
-5. When the toolkit reports the change verified, restart the robot normally.
-
-## Linux quick start
-
-On an x86_64 Linux system (including WSL 2), clone the repository and run the launcher:
+## Build
 
 ```sh
-git clone https://github.com/Jibo-Revival-Group/BEetle.git
-cd BEetle
-./run.sh --gui
+npm ci
+npm start          # run it
+npm test           # finder and conversion tests (a stand-in SSH Jibo)
+npm run dist       # build for this computer into dist/
 ```
 
-The launcher checks the local `dist/jibo-dfu-linux-x86_64.pyz` before opening it. If it is missing, stale, or contains a ShofEL helper that cannot start DFU, the launcher asks for `sudo` authorization in the same terminal, installs missing build packages on supported distributions, builds the launch-enabled ShofEL helper, replaces the `.pyz`, and opens the GUI. It also installs the system Tk dependency on supported distributions; a working graphical display is required. You do not need to install ShofEL separately. Prefer `./run.sh --gui` so the launcher requests authorization and preserves the required desktop connection variables. USB access requires administrator privileges. Backups are saved under the invoking owner's `~/Jibo-Backups`.
+Every push runs the tests and an app check (the real BEacon page from BEam beta, a stand-in robot, a full conversion), then builds Windows, Mac and Linux files on GitHub. Pushing a `v*` tag publishes a release.
 
-When `./run.sh` is started inside WSL, it also tries to use Windows PowerShell and usbipd-win to attach a connected Jibo and reattach it when it changes from APX to DFU. If Windows interop or usbipd-win is unavailable, attach it manually. Use `JIBO_MANUAL_USB=1 ./run.sh --gui` to skip automatic USB handoff.
+BEetle uses BEep's own page scripts: `web/theme.js` (the 5x1 look) and `web/bridge.js` (title, tabs and toolbar buttons). After changing them in BEep, copy them over with `node tools/sync-beep-scripts.js <path to BEep/BEacon.swift>`.
 
-The first build needs an internet connection for ShofEL and package installation. The launcher's default loader is the included `assets/loader.bin`; `JIBO_LOADER=/path/to/loader.bin ./run.sh --gui` selects a different local copy of the same pinned image. The U-Boot source and notices are in `vendor/jibo-ram-dfu-v1-source.tar.gz`; the file access changes are in `firmware/file-level.patch` and `firmware/cid-serial.patch`, and the faster transfer changes are in `firmware/dfu-queue.patch`. An existing package can be run directly with `sudo python3 dist/jibo-dfu-linux-x86_64.pyz`.
+## The old BEetle
 
-## Windows with WSL
-
-Use an x64 Windows PC with WSL 2 and Ubuntu. For a first-time setup, open **PowerShell as Administrator** and install WSL with Ubuntu 22.04 LTS:
-
-```powershell
-wsl --install -d Ubuntu-22.04
-```
-
-Restart Windows if prompted, then open **Ubuntu 22.04** once to create its Linux username and password. In PowerShell, update WSL and check that Ubuntu shows `VERSION 2`:
-
-```powershell
-wsl --update
-wsl --list --verbose
-```
-
-If Ubuntu shows `VERSION 1`, run `wsl --set-version Ubuntu-22.04 2`. Install [usbipd-win](https://github.com/dorssel/usbipd-win) from PowerShell with Windows Package Manager, then reopen PowerShell so `usbipd` is on your path:
-
-```powershell
-winget install --interactive --exact dorssel.usbipd-win
-usbipd list
-```
-
-If `winget` is unavailable, install the `.msi` from the [usbipd-win releases](https://github.com/dorssel/usbipd-win/releases). [Microsoft's WSL instructions](https://learn.microsoft.com/windows/wsl/install), [Ubuntu's WSL guide](https://ubuntu.com/wsl/docs/latest/howto/install-ubuntu-wsl2/), and [Microsoft's USB connection guide](https://learn.microsoft.com/windows/wsl/connect-usb) cover the setup and USB prerequisites.
-
-Open PowerShell in the downloaded or cloned toolkit folder and run:
-
-```powershell
-.\run.ps1 -Gui -Distro Ubuntu-22.04
-```
-
-The launcher selects that WSL 2 distribution, shares and attaches a connected Jibo USB device, then runs `run.sh --gui` inside WSL. WSLg must be available to display the window; if it is missing, run `wsl --update` and `wsl --shutdown`, then reopen the launcher. The robot can change from APX (`0955:7740`) to DFU (`0955:701a`); the launcher watches both USB identities while the menu is open. Sharing a new USB identity may show a Windows administrator prompt. Run `.\run.ps1 -Gui -Distro Ubuntu-22.04 -ManualUsb` if you prefer to attach from another PowerShell window with `usbipd bind --busid <BUSID>` (administrator) and `usbipd attach --wsl --busid <BUSID>`. The Linux `./run.sh --gui` also works directly inside WSL with manual USB attachment and WSLg. If PowerShell's script policy blocks the launcher, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Gui -Distro Ubuntu-22.04` for that invocation.
-
-## macOS
-
-Install [Homebrew](https://brew.sh) and native tools with a matching Python/Tk pair. This example explicitly selects Python 3.12:
-
-```sh
-brew install python@3.12 python-tk@3.12 dfu-util libusb e2fsprogs
-git clone https://github.com/Jibo-Revival-Group/BEetle.git
-cd BEetle
-JIBO_PYTHON="$(brew --prefix python@3.12)/bin/python3.12" ./run.sh --gui
-```
-
-If you already use another Python 3.10+ version, install its matching `python-tk@X.Y` package and use `JIBO_PYTHON` to select that interpreter. A Finder launch must also resolve a Python with matching Tk; the terminal command above is the explicit path when several Python versions are installed.
-
-The launcher does not install packages itself: it checks the tools above before opening the interface and prints the exact install command if one is missing. Installing Homebrew also installs the Xcode Command Line Tools (`cc`, `make`, `git`) that the first launch uses to build the ShofEL entry helper from the pinned in-repo payloads, so no ARM cross-compiler is needed. That helper is downloaded, built once on the first launch (internet required), and reused afterwards. No `sudo` is needed on a Mac, and backups are saved under the invoking owner's `~/Jibo-Backups`. On Apple silicon, open a native Terminal session with Rosetta disabled.
-
-For older Intel Macs that Homebrew does not support, install the same tools with [MacPorts](https://www.macports.org/install.php). Without Homebrew the launcher finds MacPorts in `/opt/local` on its own, so `BEetle.command` works by double-click:
-
-```sh
-sudo port install python312 py312-tkinter tk dfu-util libusb e2fsprogs
-./run.sh --gui
-```
-
-Install the `tk` port as well as `py312-tkinter`: without it the window fails with "Can't find a usable tk.tcl". The downloadable Mac app needs macOS 15 or later; on older macOS use this source version.
-
-See [macOS setup and verification](docs/macos.md) for architecture notes, tool selection, `JIBO_*` overrides, and the current hardware-verification results.
-
-## Manual build and scripting
-
-The launcher builds the package automatically; these are the equivalent manual steps when you need to inspect or customize the build. You need Python 3, `dfu-util`, `libusb-1.0`, GCC, Make, and an ARM bare-metal toolchain. The toolkit does not include or need a production signing key for ShofEL entry.
-
-```sh
-python3 scripts/build_file_level_entry.py \
-  --loader assets/loader.bin --out .build/file-level-entry
-```
-
-This helper checks the loader manifest, clones the pinned ShofEL revision, applies the matching entry patch, and tests the resulting host tool and RAM stage. A matching local build is reused.
-
-Package the included loader, ShofEL entry files, DFU tool, and Python UI. The packager checks the loader against its pinned size and SHA-256 and rejects a ShofEL host built without DFU launch support. It does not include signed RCM artifacts or a signing key.
-
-```sh
-python3 scripts/package.py \
-  --loader assets/loader.bin \
-  --shofel2 .build/file-level-entry/shofel2_t124 \
-  --intermezzo .build/file-level-entry/intermezzo.bin \
-  --dfu-stage .build/file-level-entry/dfu_stage2.bin \
-  --dfu-util "$(command -v dfu-util)" \
-  --out dist/jibo-dfu-linux-x86_64.pyz
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz
-```
-
-To rebuild the loader itself, extract `vendor/jibo-ram-dfu-v1-source.tar.gz` and follow [the loader build notes](docs/loader-build.md) with `--file-level-candidate`. That separate build needs the matching Buildroot host toolchain. To run the Python source directly instead of a `.pyz`, place the matching image at `./loader.bin`, place `shofel2_t124`, `intermezzo.bin`, and `dfu_stage2.bin` together in `./tools/`, then run `sudo python3 jibo_dfu.py`.
-
-## Using the toolkit
-
-See [RTM images and factory calibration](docs/rtm-images-and-calibration.md)
-for the archived RTM packages and the factory's calibration steps.
-
-With the robot in RCM/APX, choose **Enter DFU with ShofEL** first. Both interfaces refresh robot state and available actions automatically when USB changes. In the GUI, use **Refresh USB**, F5 or Ctrl+R; in the TUI, `r` refreshes manually. The current loader uses Meerkat Rev02 RAM slots 2 and 3; only slot 2 has been confirmed on hardware. Select it for a robot whose hardware profile matches. Once DFU is active, both interfaces offer:
-
-| Action | What it does |
-| --- | --- |
-| Set robot mode | Chooses `normal`, `developer`, `int-developer`, or `oobe`; saves or reuses one rollback backup, edits only `/jibo/mode.json`, and checks the file and its permissions. |
-| Add or update a Wi-Fi network | Saves or reuses the `var` backup, adds the network or updates a matching SSID in `/var/etc/wpa_supplicant.conf`, and checks the result. Protected network passwords are entered twice. It also prepares the boot fix for Jibo's retired server check and, on RTM2, adjusts TI radio startup when needed. |
-| Set mode and configure Wi-Fi | Changes the settings in one reviewed file transaction when the fast writer supports the files. If it does not, one full `var` read, edit, write, and readback handles the settings and needed Wi-Fi startup changes. |
-| Install an official update package | Selects a package from `./updates` and preserves current `var`, replaces it for fresh setup, or creates fresh `var` with this robot's saved identity and camera calibration in OOBE mode. Checks live GPT sizes, saves or reuses one `var` rollback backup, and writes compact ext4 images. First boot grows the flashed filesystems to their partition sizes. Preserving `var` updates only its existing resize script so an old completion marker cannot skip that step. The normal path accepts DFU's completed transfer; `flash-update --verify-readback` checks the transferred image bytes. Other partitions are restored from the package and are not backed up first. |
-| Save or check a var backup | Reads the 500 MiB `var` partition and saves a SHA-256 manifest. Reuses a verified existing backup for the same DFU device unless refreshed. |
-| More tools and local images | Checks the partition layout; backs up or restores chosen partitions; writes an edited `var` image; or inspects and edits a local backup. Local image edits do not change the robot. |
-
-The GPT check reads the complete `jibo-dfu-v1` alternate. Its final short transfer resets the loader's read cursor, so another check or an update can run without restarting DFU.
-
-**Transfer speed:** Whole-partition reads and writes go through `jibo_dfu_pipeline.py`, which talks to Linux usbfs directly and keeps DFU requests queued instead of waiting a USB round trip for every block. The included loader uses 32 KiB blocks and accepts queued writes; it lists the read-only `jibo-dfu-queue-v1` alternate to say so. With an older loader, reads are still queued, but writes send one block at a time. Over WSL with usbipd-win, a 500 MiB `var` read took 52.0 s, against 115 s with dfu-util 0.9. A readback-checked `var` write took 76.4 s, against about 2 MiB/s with dfu-util. Set `JIBO_DFU_TRANSFER=dfu-util` to use dfu-util for these transfers. Small file-level requests always use dfu-util.
-
-Compact preserve-`var` flashing currently accepts the known 13.0.0 first-boot script. It checks the selected package's script and rootfs boot hook before writing. Older scripts can format `rootfsB` during first boot, so an unrecognized script is rejected rather than rearmed. The file editor now handles the resize script's legacy one-block mapping. If a different layout fails its safety checks, the toolkit reads the current 500 MiB `var`, edits a temporary copy, writes it back after the compact package images, and checks the new script and permissions before reset. The temporary image is removed when the operation ends; the existing rollback backup is reused.
-
-The included loader supports bounded changes to existing files. It reads the target file once before the change, then checks the file and its ownership and permissions after writing. The first `var` change saves a rollback image; later `var` changes reuse any verified `var` image for the same robot, even if the live filesystem has changed. Other partitions are backed up only when selected. The file writer currently handles only existing regular files of at most 4 KiB in one allocated block, mapped by one extent or one legacy direct pointer. Stock RTM Wi-Fi configs may occupy four 1 KiB blocks because of comments, and stock network startup files occupy two. A full-`var` Wi-Fi edit removes comment-only and blank lines from these stock files while keeping their active settings. That can make later file edits fit in one block. When a mode or Wi-Fi file uses an unsupported layout, or `var` has an unclean ext4 journal, the menu offers the slower full-`var` edit as an explicit choice, with cancel selected by default. The journal check protects direct writes and remains in force after a robot boot until Linux cleanly unmounts `var` or the full transfer replays the journal on a local copy. Full image writes and update packages still use partition transfers. See [the file-level protocol](firmware/file-level-protocol.md). An earlier direct mode-file write passed content and metadata readback.
-
-**Selectable backup and restore:** In **More tools**, choose **Back up selected partitions** and mark individual GPT partitions, or select all. Existing verified copies for the same robot are reused. The resulting `backup-set.json` lists the saved images without making duplicate copies. **Restore selected partitions** lets you choose all or a subset from that set. It checks the robot identity, live GPT extents, image sizes and hashes before asking for confirmation, then reads every restored partition back to check it. These are the GPT partitions exposed for complete DFU transfer. The loader's raw `emmc-*` alternatives are read-only; this flow does not restore the raw GPT, gaps between partitions, or eMMC Boot0/Boot1. A byte-for-byte full-chip restore is not available.
-
-Jibo's archived `PlatformTeam/system-manager` starts `wpa_supplicant` using `/var/etc/wpa_supplicant.conf`. The archived `jiborobot/jibo-wifi` saves networks with `SAVE_CONFIG`; its separate `/var/etc/networks.conf` stores optional static IP settings for those SSIDs, not a second credentials database. This menu adds a DHCP Wi-Fi network to the supplicant file or replaces a saved network with the same SSID, while preserving other saved networks. It does not configure static IP addresses or test association while the robot is in DFU. Interactive Wi-Fi password entry asks for the password twice; scripts using `--password-stdin` still provide one line.
-
-On a live RTM2 robot, Wi-Fi associated, received an IP address, and then disconnected after its Wi-Fi service failed to reach `api.jibo.com`. The service treats that server failure as a failed connection and disconnects locally. When you set Wi-Fi on a stock RTM2 or RTM3 installation, the toolkit adds a startup command that disables only this obsolete server reachability check before the service starts. It keeps the original service bundle at `/usr/local/bin/jibo-ssm/lib/skills-service-manager.js.jibo-dfu-original` and leaves the service's access-point and IP checks in place. The command applies once at boot if the expected setting is present; it has no effect on an unknown service bundle. This was verified on the live RTM2 robot and across a restart.
-
-Stock RTM2 starts the TI `wlan0` supplicant directly. The later RTM3 image disables TI radio power saving before starting it. When you set Wi-Fi, the toolkit also applies those two startup commands if it finds the original RTM2 hook in `var`. The tested RTM2 disconnect occurred with those radio settings already in place, so they did not cause that disconnect. If Wi-Fi still fails after restarting, router security or radio compatibility may be a separate issue. The toolkit saves WPA-PSK credentials and can use the WPA2 side of a mixed WPA2/WPA3 network; WPA3-only operation has not been verified.
-
-For advanced file inspection, `stat-partition-file /jibo/mode.json --partition var` reads the file's UID, GID, permissions, and inode. `set-mode` and `configure-wifi` use the quick file path when the active loader advertises it; `set-mode-file` and `configure-wifi-file` require that path explicitly.
-
-For scripts, the corresponding commands are:
-
-```sh
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz enter-dfu-shofel --port 1-1 --confirm-meerkat-rev02
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz backup-var --port 1-1
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz list-partitions --port 1-1
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz backup-partitions --all --port 1-1
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz restore-partitions /path/to/backup-set.json --partition var --port 1-1 --yes
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz inspect-var /path/to/var.img
-sudo python3 dist/jibo-dfu-linux-x86_64.pyz list-updates
-```
-
-Use `--out /path/to/new/directory` with `backup-var` to force a fresh read for comparison. The default reuses one verified baseline for the same robot; `--refresh` reads the current state and discards the new copy if it is byte-identical to the saved baseline. Use `--partition NAME` more than once with `backup-partitions` or `restore-partitions` to pick several partitions. The update workflow saves or reuses a `var` rollback backup. Full readback of update images is optional with `--verify-readback`; it checks only the stock image prefixes that were sent, before first-boot expansion.
-
-If an update stops mid-flash, leave the robot in DFU. `flash-update PACKAGE --preserve-var --resume-from /path/to/update-manifest.json --yes` reuses the existing `var` backup without dumping live `var` again. It skips a recorded completed compact transfer when its image hash matches; incomplete compact transfers are read back before deciding whether to repeat them. A record made by the older full-partition writer is reflashed from the compact stock images because its hashes refer to a different image layout. If the failure happened before any backup or partition write, rerun normally without `--resume-from`. Add `--verify-readback` to compare each new transfer before reset.
-
-## Boot-screen Wi-Fi/IP diagnostic (USB-only setup)
-
-In **Set mode and configure Wi-Fi**, developer and int-developer modes default
-**Show Wi-Fi status and IP on the boot screen** to ON. Select **Leave the
-current boot-screen setting unchanged** to retain the previous fast file-only
-path. Install or removal intentionally uses the existing full-var backup,
-confirmation, write and SHA-256 readback transaction, with mode and Wi-Fi in the
-same candidate image. The guided confirmation discloses the larger transfer.
-It does not require networking, cloud access, SSH or an OTA on the robot.
-
-The upstream diagnostic assets retain `/var/jibo/phoenix/network-status/` for compatibility; one guarded `lo`
-`post-up` line in `/var/etc/network/interfaces` binds the matching renderer over
-the read-only SSM startup-view file **in memory only**, before X11/SSM starts.
-The services partition is never rewritten or remounted read-write. Unknown/custom
-SSM hashes safely keep the stock screen. The diagnostic is suppressed outside
-developer modes and shows only current Wi-Fi association and a usable wlan0 IPv4
-address, not saved credentials. Renderer polling has timeouts and stops when the
-startup window loses ownership.
-
-Removal is under **More tools → Remove boot-screen Wi-Fi/IP status** or in the
-developer-mode setup selector. It removes only the toolkit-owned files and
-loopback line; mode, saved Wi-Fi, identity and calibration are retained. Reboot
-after removal; an existing bind mount lasts for the current boot.
-
-### What Jibo's screen shows
-
-The Wi-Fi/IP line appears only in **developer** or **int-developer** mode with **Show Wi-Fi status and IP on the boot screen** enabled (ON by default in the GUI's **Set mode and configure Wi-Fi** developer-mode setup). After restarting Jibo normally:
-
-| On Jibo's screen | What it means and what to do |
-| --- | --- |
-| `Wi-Fi: checking...` | Jibo is starting up and checking Wi-Fi. Wait for the status to update. |
-| `Wi-Fi: connected to <network name> · IP <address>` | Wi-Fi is connected and Jibo has an IP address. Use this IP for the SSH stage of **Set up with 5x1**. |
-| `Wi-Fi: connected, waiting for address` | Jibo has joined the network, but the router has not given him an IP address yet. Wait a minute; if it stays here, check the router and its DHCP settings. |
-| `Wi-Fi: not connected` | Jibo is not connected to Wi-Fi. Check the network name and password, and make sure Jibo is within range of the router. Re-run **Set mode and configure Wi-Fi** or **Add or update a Wi-Fi network** with the correct name and password, then restart Jibo. |
-| `Wi-Fi: status unavailable` | The Wi-Fi status could not be read. Restart Jibo once; if it still appears, ask in the [Jibo Revival Group Discord](https://discord.gg/CBVJzkRGwN). |
-
-If the line is missing, check the mode and enable the option in **Set mode and configure Wi-Fi**, then restart. To remove it, choose **More tools → Remove boot-screen Wi-Fi/IP status**, then restart Jibo. Unchecking the GUI checkbox leaves the current setting unchanged; it does not remove an installed status line.
-
-Equivalent CLI operations (explicit confirmation is still required):
-
-```bash
-# Defaults to install for developer modes; password is prompted securely.
-python3 jibo_dfu.py set-mode-wifi --mode int-developer --ssid 'Your network'
-# Use --boot-network-status keep to opt out, or remove to remove in the same edit.
-python3 jibo_dfu.py boot-network-status remove
-# Offline edit of a saved var copy; the source image is never modified:
-python3 jibo_dfu.py edit-boot-network-status backup-var.img install --out candidate-var.img
-```
-
-`assets/boot-network-status/manifest.json` pins four stock hashes to three
-renderer assets: legacy Electron DOM, early X11 without ScreenScheduler, and
-current X11. Offline release checks cover the 40 candidate packages found in the
-archive's production/stable/production-OTA/SQA indexes through 13.0.0, including
-additional beta/EFT candidates. This is **not hardware boot or DFU evidence**;
-real first-boot/USB installation remains a release gate. For a new/custom hash,
-review its source and init/layout before adding a pin; never bypass the hash guard.
-
-The hook suppresses the overlay during pending or malformed OTA work state and
-runs a local monitor to release its owned bind before services replacement.
-**Real services-OTA timing is not verified.** Until tested on hardware, remove
-this diagnostic through DFU and reboot before a services OTA, verifying there is
-no startup-view child bind. The monitor is not a synchronous updater handshake.
-
-## Hardware results and remaining work
-
-On Moth, ShofEL started the RAM loader and the robot entered DFU on the same USB port. Two consecutive 17 KiB GPT marker reads in one DFU session validated the partition layout. A full DFU read of `var` took 116.9 seconds and produced exactly 524,288,000 bytes with SHA-256 `4a58631e0c6eb0559bef7d2827676a1bce7965886f2887afbdc65dedce18416b`. That matched Moth's September read-only ShofEL `var` backup byte for byte. The temporary comparison copy was removed; neither validation wrote eMMC. An older full eMMC dump from June has different `var` contents, so it is not the matching reference for this test.
-
-A mode change to `int-developer` has also been confirmed on a connected Jibo. The owner has verified the Windows/WSL USB helper through RCM-to-DFU reattachment, other USB state changes, unplug/replug, and power-off/power-on. On Aero, a compact 13.0.0 package transfer with preserved `var` completed and the robot booted. The first-boot resize tag was written after the script's `set -e` resize sequence. Live SSH inspection found rootfsA, rootfsB, and services ext4 block counts exactly equal to their GPT partition sizes; skills occupies all but 2,560 bytes of its 10,991,139,328-byte partition. `var` retained `int-developer` and its original 500 MiB size. Selectable GPT partition backup and restore are implemented. A raw full eMMC user-area backup and restore are not implemented. The original DFU tools do not configure SSH; the 5x1 setup workflow uses temporary developer mode and removes the active firewall script during bring-up.
-
-The official 5.4.2 and 13.0.0 flash packages each include one `u-boot-flasher.bin` and one base `meerkat_rev02.bct` (plus its signed copy). Their base BCT files are byte-identical, but `bct_dump` shows **two distinct DDR3 configurations**, in RAM slots 2 and 3; two EMC timing fields differ. Jibo's `flash-dfu.sh` passes the BCT and flasher separately to `tegrarcm`, supplying those RAM configurations through the BCT. [Jibo's archived flashing instructions](https://pvindex.org/confluence/display/ENG/Building+a+single+step+flash+system+for+Jibo) also prescribe different build configurations for EVT and DVT2, with an explicit Meerkat Rev02 BCT selection for DVT2. One bundled flasher binary therefore does not establish that every board revision uses the same RAM entry path.
-
-The toolkit's ShofEL entry now selects the official Meerkat Rev02 **RAM slot 2 or 3** profile from the robot's RAM strap and rejects other codes before initializing RAM. The prior slot 2 entry passed live DFU checks on Moth. The new two-slot build passes compilation and offline profile checks, but has not yet been run on a robot with slot 3. [Jibo's board history](https://pvindex.org/confluence/display/ENG/Boards,+Revisions+and+History) identifies shipping JB1014 mainboard revisions, while its [board ID table](https://pvindex.org/confluence/display/ENG/Mainboard+(JB1014)+Board+ID+Resistor+Definitions) describes separate board ID straps; neither source maps those revisions to Tegra `RAM_CODE`. The distribution of slots 2 and 3 among robots is therefore unknown. Earlier EVT hardware also had a different flashing configuration, so coverage of every robot still needs evidence and a live check on a slot 3 unit.
+Before version 2, BEetle was a USB modding tool built on the DFU Mod Toolkit. It has been retired; its code is kept in the tags `old-beetle-main`, `old-beetle-v2` and `old-beetle-native-windows`.
 
 ## License
 
-Copyright (c) 2026 Zane V.
-
-The BEetle — 5x1 Setup Toolkit is free software under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may use, study, change and share it. If you distribute it or a modified version, including inside another project, you must keep the copyright and license notices, release your version under the GPL-3.0, and publish its complete source.
-
-U-Boot, ShofEL2 and the stock robot files the toolkit modifies keep their own licenses; [NOTICE.md](NOTICE.md) lists which parts they cover.
+BEetle is free software under the GNU Affero General Public License v3.0, like BEep. See [LICENSE](LICENSE).

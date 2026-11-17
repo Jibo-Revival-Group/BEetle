@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+    <title>BEetle</title>
+    <link rel="stylesheet" href="look.css">
+    <style>
+        main { max-width: 620px; margin: 0 auto; padding: 36px 24px 28px; }
+        .brand { text-align: center; }
+        .brand svg { width: 92px; height: 92px; }
+        h1 { margin: 6px 0 2px; font-size: 34px; }
+        h2 { font-size: 18px; margin: 30px 4px 10px; }
+        .card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 22px; margin-top: 10px; width: 100%; text-align: left; color: var(--text); }
+        .card:hover { border-color: rgba(41,215,128,.5); }
+        .card svg { width: 34px; height: 34px; flex: none; }
+        .card .t { flex: 1; min-width: 0; }
+        .card b { display: block; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card small { color: var(--muted); font-size: 13px; }
+        .card .forget { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 6px 8px; border-radius: 8px; }
+        .card .forget:hover { color: var(--red); background: rgba(255,255,255,.06); }
+        .card .chev { color: var(--muted); font-size: 24px; }
+        .waiting { display: flex; gap: 12px; align-items: center; padding: 16px; border-radius: 22px; margin-top: 10px; color: var(--muted); }
+        .add { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 18px; }
+        .add input { flex: 1; font-size: 16px; height: 40px; }
+        #hint { font-size: 13px; margin: 8px 8px 0; }
+        footer { text-align: center; margin-top: 30px; font-size: 13px; }
+        footer button { background: none; border: 0; color: var(--muted); }
+    </style>
+</head>
+<body>
+<main>
+    <div class="brand">
+        <svg viewBox="0 0 500 500" aria-hidden="true"><path class="logo" fill="#01BC61" d="M 321.71 316 A 133.48 136.03 0 1 0 179.78 316 C 163 339 155.5 371 155.5 396 C 155.5 422 165 435 185 435 H 317 C 337 435 345.5 422 345.5 396 C 345.5 371 337 339 321.71 316 Z M 349.4 190.97 A 99.93 96.86 0 1 0 149.54 190.97 A 99.93 96.86 0 1 0 349.4 190.97 Z"/><path fill="#0AB763" d="M 250 118 L 267 155 L 305 172.5 L 267 190 L 250 227 L 233 190 L 195 172.5 L 233 155 Z"/></svg>
+        <h1>BEetle</h1>
+        <div class="muted">Your Jibo, on your computer.</div>
+    </div>
+
+    <h2>Your robots</h2>
+    <div id="list"></div>
+    <div id="waiting" class="waiting glass" hidden><div class="spinner"></div><span>Looking for Jibo on this network…</span></div>
+
+    <h2>Add by IP address</h2>
+    <form id="add" class="add glass pill">
+        <input id="address" placeholder="192.168.1.20" autocomplete="off" spellcheck="false" aria-label="Jibo's IP address">
+        <button class="green" type="submit">Add</button>
+    </form>
+    <div id="hint" class="muted">Jibo's IP address is in Settings › Wi-Fi on his screen.</div>
+
+    <h2>New to 5x1?</h2>
+    <button id="convert" class="card glass">
+        <svg viewBox="0 0 500 500" aria-hidden="true"><path class="logo" fill="#01BC61" d="M 321.71 316 A 133.48 136.03 0 1 0 179.78 316 C 163 339 155.5 371 155.5 396 C 155.5 422 165 435 185 435 H 317 C 337 435 345.5 422 345.5 396 C 345.5 371 337 339 321.71 316 Z M 349.4 190.97 A 99.93 96.86 0 1 0 149.54 190.97 A 99.93 96.86 0 1 0 349.4 190.97 Z"/></svg>
+        <span class="t"><b>Convert a Jibo to 5x1</b><small>For a modded Jibo: installs 5x1 over SSH.</small></span>
+        <span class="chev">›</span>
+    </button>
+
+    <footer><button id="site">Made by 5x1 · 5x1.com</button></footer>
+</main>
+<script src="home.js"></script>
+</body>
+</html>

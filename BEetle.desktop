@@ -1,9 +1,0 @@
-#!/usr/bin/env -S bash -c 'exec /bin/bash "$(dirname -- "$0")/run-gui.sh" "$@"'
-[Desktop Entry]
-Type=Application
-Name=BEetle — 5x1 Setup Toolkit
-Comment=USB recovery, backups, mode and Wi-Fi settings
-Exec=bash -c "cd -- \"\\$(dirname -- \"\\$1\")\" && exec /bin/bash ./run-gui.sh" jibo %k
-Icon=computer
-Terminal=true
-Categories=System;

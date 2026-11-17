@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+    <title>BEetle</title>
+    <link rel="stylesheet" href="look.css">
+    <style>
+        body { display: grid; grid-template-columns: 236px 1fr; overflow: hidden; }
+        nav { display: flex; flex-direction: column; margin: 12px 0 12px 12px; padding: 14px 10px; border-radius: 26px; min-height: 0; }
+        .who { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+        .who svg { width: 34px; height: 34px; flex: none; }
+        .who span { min-width: 0; overflow: hidden; }
+        .who b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .who small { color: var(--muted); font-size: 12px; }
+        .tabs { position: relative; display: flex; flex-direction: column; gap: 2px; }
+        .bubble { position: absolute; left: 0; right: 0; height: 44px; border-radius: 999px; background: rgba(41,215,128,.24); transition: transform .32s cubic-bezier(.34,1.4,.64,1); pointer-events: none; }
+        .tab { position: relative; display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--text); font-size: 14px; text-align: left; }
+        .tab:hover { background: rgba(255,255,255,.05); }
+        .tab svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+        .tab.on { color: var(--green); font-weight: 600; }
+        .sep { height: 1px; background: var(--edge); margin: 10px 10px; }
+        .back { margin-top: auto; }
+        section { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100vh; }
+        header { display: flex; align-items: center; gap: 8px; padding: 18px 24px 10px; min-height: 64px; }
+        header h1 { flex: 1; margin: 0; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        header .act { background: none; border: 0; color: var(--green); font-weight: 700; font-size: 15px; padding: 8px 10px; border-radius: 10px; }
+        header .act:hover:not(:disabled) { background: rgba(255,255,255,.06); }
+        header .act:disabled { opacity: .4; cursor: default; }
+        webview { flex: 1; min-height: 0; background: var(--backdrop); }
+        .gone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); }
+        .gone h2 { color: var(--text); margin: 0 0 8px; }
+    </style>
+</head>
+<body>
+<nav class="glass">
+    <div class="who"><svg viewBox="0 0 500 500" aria-hidden="true"><path class="logo" fill="#01BC61" d="M 321.71 316 A 133.48 136.03 0 1 0 179.78 316 C 163 339 155.5 371 155.5 396 C 155.5 422 165 435 185 435 H 317 C 337 435 345.5 422 345.5 396 C 345.5 371 337 339 321.71 316 Z M 349.4 190.97 A 99.93 96.86 0 1 0 149.54 190.97 A 99.93 96.86 0 1 0 349.4 190.97 Z"/><path fill="#0AB763" d="M 250 118 L 267 155 L 305 172.5 L 267 190 L 250 227 L 233 190 L 195 172.5 L 233 155 Z"/></svg>
+        <span><b id="name"></b><small id="host"></small></span></div>
+    <div class="tabs" id="tabs"><div class="bubble" id="bubble" hidden></div></div>
+    <button class="tab back" id="back"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>All robots</button>
+</nav>
+<section>
+    <header><h1 id="title"></h1><span id="actions"></span></header>
+    <webview id="page" hidden></webview>
+    <div class="gone" id="gone" hidden>
+        <h2>Can't reach <span id="gone-name"></span></h2>
+        <p>Make sure Jibo is on and this computer is on the same network.</p>
+        <button class="green" id="retry">Try again</button>
+    </div>
+</section>
+<script src="robot.js"></script>
+</body>
+</html>
