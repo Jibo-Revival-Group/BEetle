@@ -82,5 +82,5 @@ function checkStep() {
     checking = 'done';
     page.executeJavaScript('getComputedStyle(document.body).backgroundColor + "|" + getComputedStyle(document.documentElement).getPropertyValue("--jibo-blue").trim()')
         .then(look => { sessionStorage.setItem('check', JSON.stringify({ title: state.title, panel: state.panel, look: look })); })
-        .then(() => setTimeout(() => { location.href = 'convert.html?check=1&host=127.0.0.1'; }, 1500));
+        .then(() => setTimeout(() => { location.href = 'home.html?stay=1&check=convert&host=127.0.0.1'; }, 1500));
 }

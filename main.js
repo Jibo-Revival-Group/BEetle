@@ -72,7 +72,7 @@ ipcMain.handle('convert', async (e, host) => {
     } finally { powerSaveBlocker.stop(blocker); }
 });
 // Jibo on USB: BEep's helper (dfu/beep_dfu.py) is the DFU Mod Toolkit's own code, built per OS.
-function usb(action, onLine) {
+function usb(action, onLine, input) {
     const exe = 'beep-dfu' + (process.platform === 'win32' ? '.exe' : '');
     // Packaged: resources/dfu-<arch> (the Mac app carries both an arm64 and an x64 helper).
     const dir = app.isPackaged ? path.join(process.resourcesPath, 'dfu-' + process.arch) : path.join(__dirname, 'dfu/dist/beep-dfu');
@@ -90,6 +90,8 @@ function usb(action, onLine) {
     return new Promise(resolve => {
         let result = null, buffer = '';
         const child = spawn(command, args, { windowsHide: true });
+        child.stdin.on('error', () => {}); // the helper may exit before reading (e.g. no robot)
+        child.stdin.end(input ? JSON.stringify(input) + '\n' : ''); // Wi-Fi details go on stdin, never on the command line
         const take = chunk => {
             buffer += chunk;
             const lines = buffer.split(/\r?\n|\r/); buffer = lines.pop();
@@ -109,12 +111,14 @@ function usb(action, onLine) {
     });
 }
 ipcMain.handle('usb-status', () => usbBusy ? { busy: true } : usb('status'));
-ipcMain.handle('usb-run', async (e, action) => {
-    if (!['int-developer', 'backup', 'usb-helper'].includes(action) || usbBusy) return { ok: false, error: 'Another USB step is still running.' };
+ipcMain.handle('usb-run', async (e, action, input) => {
+    if (!['int-developer', 'backup', 'wifi', 'usb-helper'].includes(action)) return { ok: false, error: 'Unknown USB step.' };
+    if (usbBusy) return { ok: false, error: 'Another USB step is still running.' };
     usbBusy = true;
     const blocker = powerSaveBlocker.start('prevent-app-suspension');
     try {
-        const result = await usb(action, line => send('usb-line', line));
+        const wifi = action === 'wifi' && input ? { ssid: String(input.ssid || ''), password: String(input.password || ''), open: Boolean(input.open) } : null;
+        const result = await usb(action, line => send('usb-line', line), wifi);
         if (result.ok && result.folder) backupFolder = result.folder;
         return result;
     } finally { usbBusy = false; powerSaveBlocker.stop(blocker); }

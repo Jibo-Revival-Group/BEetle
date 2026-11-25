@@ -24,14 +24,28 @@
         .add { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 18px; }
         .add input { flex: 1; font-size: 16px; height: 40px; }
         #hint { font-size: 13px; margin: 8px 8px 0; }
-        .usb { padding: 16px 18px; border-radius: 22px; }
-        .usb .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 8px; }
-        .usb .row .ghost { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid var(--edge); box-shadow: none; }
-        .usb small { display: block; font-size: 13px; }
-        .usb details { margin-top: 10px; font-size: 13px; color: var(--muted); }
-        .usb summary { cursor: pointer; color: #6fe3a6; }
-        .usb ol { padding-left: 20px; margin: 8px 0 0; }
-        #usbLog { max-height: 160px; overflow: auto; font-size: 12px; background: rgba(0,0,0,.25); border-radius: 12px; padding: 10px; margin: 10px 0 0; white-space: pre-wrap; }
+        .tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .tools .wide { grid-column: 1 / -1; height: 54px; font-size: 17px; }
+        .tools .tool { color: var(--text); border-radius: 18px; padding: 14px 10px; font-weight: 600; }
+        .tools .tool:hover { border-color: rgba(41,215,128,.5); }
+        .usb-state { font-size: 13px; margin: 10px 6px 0; }
+        #usbDriver { margin-top: 10px; }
+        dialog { width: min(720px, calc(100vw - 48px)); max-height: calc(100vh - 48px); border-radius: 24px; color: var(--text); padding: 22px 24px; overflow: auto; }
+        dialog::backdrop { background: rgba(0,0,0,.55); }
+        dialog h2 { margin: 0 0 6px; font-size: 22px; }
+        dialog p { margin: 0 0 14px; font-size: 14px; }
+        #toolForm .field { display: flex; padding: 0 16px; border-radius: 16px; margin-bottom: 10px; }
+        #toolForm .field input { flex: 1; height: 44px; font-size: 15px; }
+        .choice { display: flex; gap: 18px; margin: 4px 4px 12px; font-size: 14px; }
+        .rcm { font-size: 13px; color: var(--muted); margin: 4px 2px 12px; }
+        .rcm summary { cursor: pointer; color: #6fe3a6; }
+        .rcm ol { padding-left: 20px; margin: 8px 0 0; }
+        .actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .ghost { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid var(--edge); height: 42px; padding: 0 18px; border-radius: 999px; }
+        .ghost:disabled { opacity: .5; cursor: default; }
+        #toolStatus { margin: 14px 2px 0; font-size: 14px; min-height: 1.2em; }
+        #toolLog { height: 260px; overflow: auto; margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; background: #050806; border: 1px solid var(--edge);
+            color: #c8f7da; white-space: pre-wrap; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: text; }
         footer { text-align: center; margin-top: 30px; font-size: 13px; }
         footer button { background: none; border: 0; color: var(--muted); }
     </style>
@@ -55,35 +69,47 @@
     </form>
     <div id="hint" class="muted">Jibo's IP address is in Settings › Wi-Fi on his screen.</div>
 
-    <h2>Jibo on USB</h2>
-    <div class="usb glass">
-        <div id="usbState" class="muted">Checking USB…</div>
-        <div class="row">
-            <button id="usbDriver" class="green" hidden>Install USB driver</button>
-            <button id="devmode" class="green" disabled>Switch to int-developer</button>
-            <button id="backup" class="green ghost" disabled>Back up</button>
-            <button id="showBackup" class="green ghost" hidden>Show backup</button>
-        </div>
-        <small class="muted">Switching to int-developer also puts the Wi-Fi/IP status on Jibo's boot screen. It doesn't keep a backup of Jibo; use Back up first if you want one.</small>
-        <details>
-            <summary>How do I put Jibo in RCM mode?</summary>
-            <ol>
-                <li>Fully shut Jibo down.</li>
-                <li>Open the hatch on the back of his head to reach the round button panel.</li>
-                <li>Connect the USB cable from your computer to Jibo's micro-USB port under the same hatch.</li>
-                <li>Press and hold the RCM button (the lower of the two small buttons). Keep holding it while you turn Jibo back on with his power button, then let go of the RCM button.</li>
-                <li>In RCM mode, the red light on his forehead stays on and you don't hear his startup chime. If he chimes or starts normally, shut him down and try again.</li>
-            </ol>
-        </details>
-        <pre id="usbLog" hidden></pre>
+    <h2>Tools</h2>
+    <div class="tools">
+        <button class="green wide" data-tool="convert">Convert to 5x1</button>
+        <button class="tool glass" data-tool="backup">Back up eMMC</button>
+        <button class="tool glass" data-tool="int-developer">Enter int-developer</button>
+        <button class="tool glass" data-tool="wifi">Set Wi-Fi network</button>
     </div>
+    <div id="usbState" class="muted usb-state">Checking USB…</div>
+    <button id="usbDriver" class="green" hidden>Install USB driver</button>
 
-    <h2>New to 5x1?</h2>
-    <button id="convert" class="card glass">
-        <svg viewBox="0 0 500 500" aria-hidden="true"><path class="logo" fill="#01BC61" d="M 321.71 316 A 133.48 136.03 0 1 0 179.78 316 C 163 339 155.5 371 155.5 396 C 155.5 422 165 435 185 435 H 317 C 337 435 345.5 422 345.5 396 C 345.5 371 337 339 321.71 316 Z M 349.4 190.97 A 99.93 96.86 0 1 0 149.54 190.97 A 99.93 96.86 0 1 0 349.4 190.97 Z"/></svg>
-        <span class="t"><b>Convert a Jibo to 5x1</b><small>For a modded Jibo: installs 5x1 over SSH.</small></span>
-        <span class="chev">›</span>
-    </button>
+    <dialog id="tool" class="glass">
+        <h2 id="toolTitle"></h2>
+        <p id="toolText" class="muted"></p>
+        <form id="toolForm">
+            <div data-for="convert" class="field glass"><input id="host" placeholder="Jibo's IP address" autocomplete="off" spellcheck="false" aria-label="Jibo's IP address"></div>
+            <div data-for="wifi" class="field glass"><input id="ssid" placeholder="Wi-Fi network name (SSID)" autocomplete="off" spellcheck="false" aria-label="Wi-Fi network name"></div>
+            <div data-for="wifi" class="choice">
+                <label><input type="radio" name="kind" value="protected" checked> Protected (WPA/WPA2)</label>
+                <label><input type="radio" name="kind" value="open"> Open network</label>
+            </div>
+            <div data-for="wifi" data-password class="field glass"><input id="password" type="password" placeholder="Wi-Fi password" autocomplete="off" aria-label="Wi-Fi password"></div>
+            <div data-for="wifi" data-password class="field glass"><input id="password2" type="password" placeholder="Confirm Wi-Fi password" autocomplete="off" aria-label="Confirm Wi-Fi password"></div>
+            <details data-for="backup int-developer wifi" class="rcm">
+                <summary>How do I put Jibo in RCM mode?</summary>
+                <ol>
+                    <li>Fully shut Jibo down.</li>
+                    <li>Open the hatch on the back of his head to reach the round button panel.</li>
+                    <li>Connect the USB cable from your computer to Jibo's micro-USB port under the same hatch.</li>
+                    <li>Press and hold the RCM button (the lower of the two small buttons). Keep holding it while you turn Jibo back on with his power button, then let go of the RCM button.</li>
+                    <li>In RCM mode, the red light on his forehead stays on and you don't hear his startup chime. If he chimes or starts normally, shut him down and try again.</li>
+                </ol>
+            </details>
+            <div class="actions">
+                <button type="button" id="toolClose" class="ghost">Close</button>
+                <button type="button" id="showBackup" class="ghost" hidden>Show backup</button>
+                <button type="submit" id="toolGo" class="green"></button>
+            </div>
+        </form>
+        <div id="toolStatus" class="muted" role="status"></div>
+        <pre id="toolLog" hidden></pre>
+    </dialog>
 
     <footer><button id="site">Made by 5x1 · 5x1.com</button></footer>
 </main>

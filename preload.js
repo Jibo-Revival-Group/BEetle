@@ -15,7 +15,7 @@ contextBridge.exposeInMainWorld('beetle', {
     onScanDone: fn => ipcRenderer.on('scan-done', () => fn()),
     onConvertLine: fn => ipcRenderer.on('convert-line', (e, line) => fn(line)),
     usbStatus: () => ipcRenderer.invoke('usb-status'),
-    usbRun: action => ipcRenderer.invoke('usb-run', action),
+    usbRun: (action, input) => ipcRenderer.invoke('usb-run', action, input),
     showBackup: () => ipcRenderer.invoke('show-backup'),
     onUsbLine: fn => ipcRenderer.on('usb-line', (e, line) => fn(line))
 });

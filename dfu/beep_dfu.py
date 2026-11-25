@@ -5,6 +5,8 @@ run as a separate program so the app itself never needs administrator rights.
   beep_dfu.py int-developer   RCM -> DFU if needed, set int-developer and install the boot-screen Wi-Fi/IP
                               status. No backup is kept (a var copy made for the write is deleted after it verifies).
   beep_dfu.py backup          RCM -> DFU if needed, then back up every partition to ~/Jibo-Backups.
+  beep_dfu.py wifi            RCM -> DFU if needed, then save a Wi-Fi network like the toolkit's Configure Wi-Fi.
+                              Reads {"ssid", "password", "open"} as JSON on stdin (never on the command line).
   beep_dfu.py usb-helper      Windows: install the UsbDk driver (Windows asks for permission).
   beep_dfu.py self-check      CI: every bundled tool runs and the toolkit loads.
 
@@ -97,6 +99,29 @@ def int_developer(api):
     return {"status": "verified", "previous_mode": previous, "mode": MODE, "wifi_screen": True}
 
 
+def wifi(api, request):
+    """The toolkit menu's Configure Wi-Fi: the quick file write (which also applies its Wi-Fi startup fixes),
+    or its whole-var write when the loader can't edit this robot's files (that one saves a var backup first)."""
+    ssid, open_network = str(request.get("ssid") or ""), bool(request.get("open"))
+    password = None if open_network else str(request.get("password") or "")
+    port, yes = robot(api), lambda plan: True
+    try:
+        try:
+            result = api.configure_wifi_file_live(ssid, password, open_network, port=port, confirmation=yes, guided=True)
+        except api.FileRpcStatusError as exc:
+            if exc.status not in (3, 4):
+                raise
+            print("The quick file write can't edit this robot's Wi-Fi files; using the whole-var write "
+                  "(it saves a backup of var first).", flush=True)
+            result = api.configure_wifi_live(ssid, password, open_network, port=port, confirmation=yes)
+    finally:
+        password = request = None
+    if result.get("status") not in ("verified", "already current", "unchanged"):
+        raise RuntimeError("Wi-Fi was not saved: " + str(result.get("status")))
+    return {"status": result["status"], "ssid": ssid,
+            "startup_fixed": bool(result.get("rtm2_wifi_startup_adjusted") or result.get("wifi_server_check_hook_added"))}
+
+
 def backup(api):
     port = robot(api)
     _, _, available = api.available_backup_partitions(port)
@@ -142,12 +167,15 @@ def main(argv):
             needed = usb_helper_needed()
             import jibo_dfu as api
             result = {"robots": [] if needed else api.devices(), "usb_helper_needed": needed}
-        elif command in ("int-developer", "backup", "self-check"):
+        elif command in ("int-developer", "backup", "wifi", "self-check"):
             if usb_helper_needed() and command != "self-check":
                 raise RuntimeError("Install the USB driver first.")
             import jibo_dfu as api
             api.calibration_service.CALIBRATION_SHARING_AVAILABLE = False  # BEep never shares robot data
-            result = {"int-developer": int_developer, "backup": backup, "self-check": self_check}[command](api)
+            if command == "wifi":
+                result = wifi(api, json.loads(sys.stdin.readline() or "{}"))
+            else:
+                result = {"int-developer": int_developer, "backup": backup, "self-check": self_check}[command](api)
         else:
             print(__doc__, file=sys.stderr)
             return 2

@@ -41,6 +41,16 @@ class FakeToolkit:
         (self.BACKUP_ROOT / "var-backup-mode").mkdir(parents=True)  # the toolkit's automatic copy
         return {"status": "verified", "current_mode": "normal", "operation_directory": self._operation("set-mode")}
 
+    def configure_wifi_file_live(self, ssid, password, open_network, port, confirmation, guided):
+        if self.journal:
+            raise self.FileRpcStatusError(4)
+        self.calls.append(("wifi-file", ssid, password, open_network, confirmation({})))
+        return {"status": "verified", "wifi_server_check_hook_added": True}
+
+    def configure_wifi_live(self, ssid, password, open_network, port, confirmation):
+        self.calls.append(("wifi-full", ssid, password, open_network))
+        return {"status": "verified"}
+
     def boot_network_status_live(self, action, port, confirmation):
         self.calls.append(("wifi-screen", action, confirmation({})))
         if not (self.BACKUP_ROOT / "var-backup-mode").exists():
@@ -78,6 +88,17 @@ class StepsTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Wi-Fi screen was not installed"):
             beep_dfu.int_developer(api)
         self.assertTrue((api.BACKUP_ROOT / "var-backup-screen").is_dir())
+
+    def test_wifi_uses_the_toolkits_quick_write_with_its_startup_fixes(self):
+        api = FakeToolkit("rcm")
+        result = beep_dfu.wifi(api, {"ssid": "Home", "password": "hunter22", "open": False})
+        self.assertEqual(api.calls, [("enter", "1-2", True), ("wifi-file", "Home", "hunter22", False, True)])
+        self.assertEqual(result, {"status": "verified", "ssid": "Home", "startup_fixed": True})
+
+    def test_wifi_falls_back_to_the_whole_var_write_and_open_networks_send_no_password(self):
+        api = FakeToolkit("dfu", journal=True)
+        beep_dfu.wifi(api, {"ssid": "Cafe", "password": "ignored", "open": True})
+        self.assertEqual(api.calls, [("wifi-full", "Cafe", None, True)])
 
     def test_backup_saves_every_partition_without_reentering_dfu(self):
         api = FakeToolkit("dfu")
