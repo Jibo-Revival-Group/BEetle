@@ -24,6 +24,14 @@
         .add { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 18px; }
         .add input { flex: 1; font-size: 16px; height: 40px; }
         #hint { font-size: 13px; margin: 8px 8px 0; }
+        .usb { padding: 16px 18px; border-radius: 22px; }
+        .usb .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 8px; }
+        .usb .row .ghost { background: rgba(255,255,255,.08); color: var(--text); border: 1px solid var(--edge); box-shadow: none; }
+        .usb small { display: block; font-size: 13px; }
+        .usb details { margin-top: 10px; font-size: 13px; color: var(--muted); }
+        .usb summary { cursor: pointer; color: #6fe3a6; }
+        .usb ol { padding-left: 20px; margin: 8px 0 0; }
+        #usbLog { max-height: 160px; overflow: auto; font-size: 12px; background: rgba(0,0,0,.25); border-radius: 12px; padding: 10px; margin: 10px 0 0; white-space: pre-wrap; }
         footer { text-align: center; margin-top: 30px; font-size: 13px; }
         footer button { background: none; border: 0; color: var(--muted); }
     </style>
@@ -46,6 +54,29 @@
         <button class="green" type="submit">Add</button>
     </form>
     <div id="hint" class="muted">Jibo's IP address is in Settings › Wi-Fi on his screen.</div>
+
+    <h2>Jibo on USB</h2>
+    <div class="usb glass">
+        <div id="usbState" class="muted">Checking USB…</div>
+        <div class="row">
+            <button id="usbDriver" class="green" hidden>Install USB driver</button>
+            <button id="devmode" class="green" disabled>Switch to int-developer</button>
+            <button id="backup" class="green ghost" disabled>Back up</button>
+            <button id="showBackup" class="green ghost" hidden>Show backup</button>
+        </div>
+        <small class="muted">Switching to int-developer doesn't make a backup of Jibo first. Use Back up before it if you want one.</small>
+        <details>
+            <summary>How do I put Jibo in RCM mode?</summary>
+            <ol>
+                <li>Fully shut Jibo down.</li>
+                <li>Open the hatch on the back of his head to reach the round button panel.</li>
+                <li>Connect the USB cable from your computer to Jibo's micro-USB port under the same hatch.</li>
+                <li>Press and hold the RCM button (the lower of the two small buttons). Keep holding it while you turn Jibo back on with his power button, then let go of the RCM button.</li>
+                <li>In RCM mode, the red light on his forehead stays on and you don't hear his startup chime. If he chimes or starts normally, shut him down and try again.</li>
+            </ol>
+        </details>
+        <pre id="usbLog" hidden></pre>
+    </div>
 
     <h2>New to 5x1?</h2>
     <button id="convert" class="card glass">

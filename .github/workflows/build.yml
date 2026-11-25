@@ -26,11 +26,57 @@ jobs:
       - run: npm ci
       - name: Unit tests (finder, conversion against a stand-in SSH Jibo)
         run: npm test
+      - name: USB helper steps against a fake toolkit
+        run: python3 -m unittest discover -s tests -p "test_*.py" -v
       - name: App check (BEacon in BEep's look, tabs, conversion)
         run: xvfb-run -a sh ci/app-check.sh "$PWD/beam/@be/be/beacon/public"
 
+  # Jibo on USB: the DFU Mod Toolkit + dfu-util + ShofEL as one native helper per OS (no WSL on Windows).
+  usb-windows-tools:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64 p7zip-full
+      - run: python3 build/dfu.py toolkit && python3 build/dfu.py windows-tools windows-tools
+      - uses: actions/upload-artifact@v4
+        with: {name: usb-windows-tools, path: windows-tools/, if-no-files-found: error}
+
+  usb-helper:
+    needs: usb-windows-tools
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-22.04, name: linux}  # older glibc, so the helper runs on older distros too
+          - {os: windows-latest, name: windows}
+          - {os: macos-15, name: mac-arm64}
+          - {os: macos-15-intel, name: mac-x64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install pyinstaller==6.16.0
+      - run: python build/dfu.py toolkit
+      - if: runner.os == 'Windows'
+        uses: actions/download-artifact@v4
+        with: {name: usb-windows-tools, path: windows-tools}
+      - if: runner.os == 'Windows'
+        run: python build/dfu.py windows-runtime windows-tools
+      - if: runner.os != 'Windows'
+        run: python build/dfu.py tools
+      - run: python build/dfu.py freeze
+      - name: Self-check (bundled dfu-util and ShofEL run, the toolkit loads)
+        shell: bash
+        run: dfu/dist/beep-dfu/beep-dfu self-check
+      - name: Pack (a tar keeps the executable bits)
+        shell: bash
+        run: tar -C dfu/dist -cf usb-helper.tar beep-dfu
+      - uses: actions/upload-artifact@v4
+        with: {name: 'usb-helper-${{ matrix.name }}', path: usb-helper.tar, if-no-files-found: error}
+
   build:
-    needs: check
+    needs: [check, usb-helper]
     strategy:
       fail-fast: false
       matrix:
@@ -43,9 +89,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/download-artifact@v4
+        with: {pattern: usb-helper-*, path: usb}
+      - name: Unpack this OS's USB helper(s)
+        shell: bash
+        run: |
+          mkdir -p dfu/dist
+          case "$RUNNER_OS" in
+            Linux) tar -C dfu/dist -xf usb/usb-helper-linux/usb-helper.tar ;;
+            Windows) tar -C dfu/dist -xf usb/usb-helper-windows/usb-helper.tar ;;
+            macOS) for arch in arm64 x64; do
+                     tar -C dfu/dist -xf usb/usb-helper-mac-$arch/usb-helper.tar && mv dfu/dist/beep-dfu dfu/dist/beep-dfu-$arch
+                   done ;;
+          esac
       - run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: The packaged app carries a working USB helper
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) cd dist && ./*.AppImage --appimage-extract >/dev/null && squashfs-root/resources/dfu-x64/beep-dfu self-check ;;
+            Windows) dist/win-unpacked/resources/dfu-x64/beep-dfu.exe self-check ;;
+            macOS) cd "$RUNNER_TEMP" && ditto -x -k "$GITHUB_WORKSPACE"/dist/*.zip . && \
+                   BEep.app/Contents/Resources/dfu-arm64/beep-dfu self-check && \
+                   file BEep.app/Contents/Resources/dfu-x64/beep-dfu | grep -q x86_64 ;;
+          esac
       - uses: actions/upload-artifact@v4
         with:
           name: BEep-${{ runner.os }}
@@ -65,6 +134,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: out
+          pattern: BEep-*
           merge-multiple: true
       - name: Publish the release
         env:

@@ -8,6 +8,7 @@ BEep for Windows, Mac and Linux (called BEetle until 2.1; this repository keeps 
 - All of BEacon: Status, Screen, Photos, People, Reports, Store, Server and Settings.
 - Downloads (like Jibo's photos) ask where to save; uploads use your computer's file picker.
 - Convert a Jibo to 5x1: for a Jibo that has already been modded, BEep logs in over SSH and runs the 5x1 install, showing its progress. The install keeps going on Jibo even if BEep closes; opening it again picks up where it left off.
+- Jibo on USB (home screen): with Jibo in RCM mode and plugged in by USB, **Switch to int-developer** changes his mode without making a backup first, and **Back up** saves every partition to `Jibo-Backups` in your home folder. Both use the [DFU Mod Toolkit](https://github.com/Jibo-Revival-Group/Jibo-DFU-Mod-Toolkit)'s own code, [dfu-util](https://dfu-util.sourceforge.net/) and ShofEL, built into BEep for each system, so nothing else (like WSL) is needed. Windows asks once to install the signed UsbDk USB driver; Linux asks for your password each time, because USB access needs it.
 
 ## Download
 
@@ -30,11 +31,13 @@ npm run dist       # build for this computer into dist/
 
 Every push runs the tests and an app check (the real BEacon page from BEam beta, a stand-in robot, a full conversion), then builds Windows, Mac and Linux files on GitHub. Pushing a `v*` tag publishes a release.
 
+The USB helper is `dfu/beep_dfu.py` (tests: `python3 -m unittest discover -s tests -p "test_*.py"`). `build/dfu.py` checks out the toolkit at its pinned commit, builds libusb, dfu-util 0.11 and ShofEL from pinned sources (cross-compiled with MinGW for Windows) and freezes the helper with PyInstaller; CI builds it on each system. The RAM loader's corresponding source is in the toolkit repository.
+
 It uses the phone app's own page scripts: `web/theme.js` (the 5x1 look) and `web/bridge.js` (title, tabs and toolbar buttons). After changing them in BEep, copy them over with `node tools/sync-beep-scripts.js <path to BEep/BEacon.swift>`.
 
 ## The old BEetle
 
-Before version 2, this app (then BEetle) was a USB modding tool built on the DFU Mod Toolkit. It has been retired; its code is kept in the tags `old-beetle-main`, `old-beetle-v2` and `old-beetle-native-windows`.
+Before version 2, this app (then BEetle) was a full USB modding tool built on the DFU Mod Toolkit. That tool has been retired (BEep's USB section reuses its build); its code is kept in the tags `old-beetle-main`, `old-beetle-v2` and `old-beetle-native-windows`.
 
 ## License
 

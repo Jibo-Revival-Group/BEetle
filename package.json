@@ -2,7 +2,7 @@
   "name": "beetle",
   "productName": "BEep",
   "version": "2.1.0",
-  "description": "BEep for your computer: find Jibo on your network, open BEacon in the 5x1 look, and convert a modded Jibo to 5x1.",
+  "description": "BEep for your computer: find Jibo on your network, open BEacon in the 5x1 look, convert a modded Jibo to 5x1, and switch Jibo to int-developer or back him up over USB.",
   "main": "main.js",
   "author": "Zane V <zane@jiborevival.com>",
   "license": "AGPL-3.0-only",
@@ -48,6 +48,12 @@
       "target": [
         "nsis",
         "portable"
+      ],
+      "extraResources": [
+        {
+          "from": "dfu/dist/beep-dfu",
+          "to": "dfu-x64"
+        }
       ]
     },
     "nsis": {
@@ -66,13 +72,30 @@
         }
       ],
       "category": "public.app-category.utilities",
-      "identity": null
+      "identity": null,
+      "extraResources": [
+        {
+          "from": "dfu/dist/beep-dfu-arm64",
+          "to": "dfu-arm64"
+        },
+        {
+          "from": "dfu/dist/beep-dfu-x64",
+          "to": "dfu-x64"
+        }
+      ],
+      "x64ArchFiles": "Contents/Resources/dfu-*/**"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "extraResources": [
+        {
+          "from": "dfu/dist/beep-dfu",
+          "to": "dfu-x64"
+        }
+      ]
     },
     "npmRebuild": false
   },

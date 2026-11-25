@@ -2,7 +2,9 @@
 
 const { app, BrowserWindow, ipcMain, shell, powerSaveBlocker } = require('electron');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { spawn } = require('child_process');
 const finder = require('./finder');
 const conversion = require('./conversion');
 
@@ -16,7 +18,7 @@ const CHECK = process.argv.indexOf('--check') >= 0;
 // Saved robots stay in the folder the app used while it was called BEetle (2.0), unless one is given (the app check).
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'BEetle'));
 
-let win = null, store = null, scanning = null;
+let win = null, store = null, scanning = null, usbBusy = false, backupFolder = null;
 
 function send(channel, value) { if (win && !win.isDestroyed()) win.webContents.send(channel, value); }
 function changed() { send('robots', store.robots); }
@@ -69,6 +71,55 @@ ipcMain.handle('convert', async (e, host) => {
         return await conversion.run(String(host).trim(), options, line => send('convert-line', line));
     } finally { powerSaveBlocker.stop(blocker); }
 });
+// Jibo on USB: BEep's helper (dfu/beep_dfu.py) is the DFU Mod Toolkit's own code, built per OS.
+function usb(action, onLine) {
+    const exe = 'beep-dfu' + (process.platform === 'win32' ? '.exe' : '');
+    // Packaged: resources/dfu-<arch> (the Mac app carries both an arm64 and an x64 helper).
+    const dir = app.isPackaged ? path.join(process.resourcesPath, 'dfu-' + process.arch) : path.join(__dirname, 'dfu/dist/beep-dfu');
+    let command = path.join(dir, exe), args = [action], stage = null;
+    // Linux: raw USB needs root, so only the helper runs as root (pkexec asks for the password).
+    if (process.platform === 'linux' && action !== 'status' && process.getuid() !== 0) {
+        if (process.env.APPIMAGE) { // root can't read the user's AppImage mount: run from a copy
+            stage = fs.mkdtempSync(path.join(os.tmpdir(), 'beep-dfu-'));
+            fs.cpSync(dir, stage, { recursive: true });
+            command = path.join(stage, exe);
+        }
+        args = ['env', 'SUDO_UID=' + process.getuid(), 'SUDO_GID=' + process.getgid(), command, action];
+        command = 'pkexec';
+    }
+    return new Promise(resolve => {
+        let result = null, buffer = '';
+        const child = spawn(command, args, { windowsHide: true });
+        const take = chunk => {
+            buffer += chunk;
+            const lines = buffer.split(/\r?\n|\r/); buffer = lines.pop();
+            lines.forEach(line => {
+                if (line.startsWith('BEEP_RESULT ')) { try { result = JSON.parse(line.slice(12)); } catch (e) { /* keep looking */ } }
+                else if (line.trim() && onLine) onLine(line);
+            });
+        };
+        child.stdout.on('data', take); child.stderr.on('data', take);
+        child.on('error', e => { result = { ok: false, error: e.message }; });
+        child.on('close', code => {
+            if (stage) fs.rmSync(stage, { recursive: true, force: true });
+            // pkexec: 126 = the password prompt was dismissed, 127 = not authorized
+            if (!result && (code === 126 || code === 127) && command === 'pkexec') result = { ok: false, error: 'BEep needs your password to reach Jibo over USB.' };
+            resolve(result || { ok: false, error: 'The USB helper stopped unexpectedly (exit ' + code + ').' });
+        });
+    });
+}
+ipcMain.handle('usb-status', () => usbBusy ? { busy: true } : usb('status'));
+ipcMain.handle('usb-run', async (e, action) => {
+    if (!['int-developer', 'backup', 'usb-helper'].includes(action) || usbBusy) return { ok: false, error: 'Another USB step is still running.' };
+    usbBusy = true;
+    const blocker = powerSaveBlocker.start('prevent-app-suspension');
+    try {
+        const result = await usb(action, line => send('usb-line', line));
+        if (result.ok && result.folder) backupFolder = result.folder;
+        return result;
+    } finally { usbBusy = false; powerSaveBlocker.stop(blocker); }
+});
+ipcMain.handle('show-backup', () => { if (backupFolder) shell.openPath(backupFolder); });
 ipcMain.handle('check-done', (e, report) => {
     if (!CHECK) return;
     process.stdout.write('BEETLE_CHECK ' + JSON.stringify(report) + '\n');

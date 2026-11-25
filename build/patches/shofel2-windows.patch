@@ -1,0 +1,39 @@
+diff --git a/exploit/mini_libusb.c b/exploit/mini_libusb.c
+index 41fcfca..77fce63 100644
+--- a/exploit/mini_libusb.c
++++ b/exploit/mini_libusb.c
+@@ -272,7 +272,13 @@ static libusb_device_handle *usb_handles[2];
+ static int usb_libusb_ready( void ) {
+     if ( usb_context )
+         return 0;
+-    return libusb_init( &usb_context ) == 0 ? 0 : -1;
++    if ( libusb_init( &usb_context ) != 0 )
++        return -1;
++#ifdef _WIN32
++    /* BEetle installs the signed UsbDk driver once, so no per-device driver is needed. */
++    libusb_set_option( usb_context, LIBUSB_OPTION_USE_USBDK );
++#endif
++    return 0;
+ }
+ 
+ static libusb_device_handle *usb_handle_at( int usb ) {
+diff --git a/include/win_compat.h b/include/win_compat.h
+new file mode 100644
+index 0000000..9afe6db
+--- /dev/null
++++ b/include/win_compat.h
+@@ -0,0 +1,14 @@
++/* Windows (MinGW) stand-ins for the few POSIX calls ShofEL uses. Force-included on Windows only. */
++#ifndef WIN_COMPAT_H
++#define WIN_COMPAT_H
++#ifdef _WIN32
++#include <io.h>
++#include <sys/stat.h>
++#include <windows.h>
++#define lstat stat
++#define fsync _commit
++static inline int link( const char *existing, const char *created ) {
++    return CreateHardLinkA( created, existing, NULL ) ? 0 : -1;
++}
++#endif
++#endif
