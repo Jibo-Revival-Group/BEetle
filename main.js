@@ -1,12 +1,13 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, powerSaveBlocker } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const finder = require('./finder');
 const conversion = require('./conversion');
+const updater = require('./updater');
 
 // BEep's page scripts (5x1 look + bridge), copied from BEep's BEacon.swift by tools/sync-beep-scripts.js.
 const SCRIPTS = {
@@ -18,7 +19,7 @@ const CHECK = process.argv.indexOf('--check') >= 0;
 // Saved robots stay in the folder the app used while it was called BEetle (2.0), unless one is given (the app check).
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'BEetle'));
 
-let win = null, store = null, scanning = null, usbBusy = false, backupFolder = null;
+let win = null, store = null, scanning = null, usbBusy = false, converting = false, backupFolder = null;
 
 function send(channel, value) { if (win && !win.isDestroyed()) win.webContents.send(channel, value); }
 function changed() { send('robots', store.robots); }
@@ -68,8 +69,9 @@ ipcMain.handle('convert', async (e, host) => {
     const blocker = powerSaveBlocker.start('prevent-app-suspension');
     try {
         const options = CHECK ? { port: Number(process.env.BEETLE_CHECK_SSH_PORT), pm: process.env.BEETLE_CHECK_PM } : {};
+        converting = true;
         return await conversion.run(String(host).trim(), options, line => send('convert-line', line));
-    } finally { powerSaveBlocker.stop(blocker); }
+    } finally { converting = false; powerSaveBlocker.stop(blocker); }
 });
 // Jibo on USB: BEep's helper (dfu/beep_dfu.py) is the DFU Mod Toolkit's own code, built per OS.
 function usb(action, onLine, input) {
@@ -130,9 +132,47 @@ ipcMain.handle('check-done', (e, report) => {
     setTimeout(() => app.exit(report.ok ? 0 : 1), 200);
 });
 
+// Updates: offer a newer release (at launch and every 6 hours), never in the middle of a USB step or a conversion.
+let updating = false, offered = null;
+async function checkForUpdate() {
+    if (updating || usbBusy || converting) return;
+    const kind = updater.installKind();
+    let update;
+    try { update = await updater.check(app.getVersion(), kind); } catch (e) { return; } // offline: try again later
+    if (!update || offered === update.version || usbBusy || converting) return;
+    offered = update.version;
+    const canInstall = Boolean(update.file);
+    const { response } = await dialog.showMessageBox(win, {
+        type: 'info', title: 'Update BEep', message: 'BEep ' + update.version + ' is out.',
+        detail: 'You have BEep ' + app.getVersion() + '. ' + (canInstall ? 'BEep will download the update, then reopen.' : 'Download it from the release page.'),
+        buttons: canInstall ? ['Update now', 'Later'] : ['Open download page', 'Later'], defaultId: 0, cancelId: 1
+    });
+    if (response !== 0) return;
+    if (!canInstall) return shell.openExternal(update.page);
+    updating = true;
+    const progress = p => { if (win && !win.isDestroyed()) { win.setProgressBar(p); win.setTitle('Updating BEep… ' + Math.round(p * 100) + '%'); } };
+    try {
+        const start = await updater.prepare(update, kind, progress);
+        start();
+        app.quit();
+    } catch (e) {
+        updating = false;
+        if (win && !win.isDestroyed()) { win.setProgressBar(-1); win.setTitle('BEep'); }
+        const { response: open } = await dialog.showMessageBox(win, {
+            type: 'error', title: 'Update BEep', message: "BEep couldn't update itself.",
+            detail: e.message + '. You can download BEep ' + update.version + ' from the release page instead.', buttons: ['Open download page', 'Close']
+        });
+        if (open === 0) shell.openExternal(update.page);
+    }
+}
+
 app.whenReady().then(() => {
     store = new finder.Store(path.join(app.getPath('userData'), 'robots.json'));
     createWindow();
     if (!CHECK) rescan();
+    if (!CHECK && (app.isPackaged || process.env.BEEP_UPDATE_FEED)) {
+        setTimeout(checkForUpdate, 5000);
+        setInterval(checkForUpdate, 6 * 60 * 60 * 1000);
+    }
 });
 app.on('window-all-closed', () => app.quit());

@@ -18,6 +18,8 @@ Get the file for your computer from the [latest release](https://github.com/Jibo
 - **Mac:** `BEep-…-mac-universal.zip` (Apple silicon and Intel). Unzip it and move BEep to Applications. The first time, right-click BEep and choose **Open**, then **Open** again, because it isn't notarized by Apple.
 - **Linux:** `BEep-…-linux-x86_64.AppImage`. Make it executable (`chmod +x`) and run it.
 
+BEep checks for a newer release when it opens (and every few hours) and offers to update itself: it downloads the same kind of file you have (portable .exe, installer, Mac app or AppImage), swaps it in and reopens. It never interrupts a running tool.
+
 Your computer must be on the same network as Jibo, and Jibo needs BEam with BEacon. Updating from BEetle keeps your saved robots; on Windows and Mac you can delete the old BEetle app afterwards.
 
 ## Build
