@@ -8,6 +8,10 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { Server, utils } = require('ssh2');
+// ssh2 makes an ed25519 key it can't parse back about 1 time in 200 (seen in CI): retry until it parses.
+function hostKey() {
+    for (;;) { const key = utils.generateKeyPairSync('ed25519').private; if (!(utils.parseKey(key) instanceof Error)) return key; }
+}
 const finder = require('../finder');
 const conversion = require('../conversion');
 
@@ -58,7 +62,7 @@ test('outcome reads PM output like BEep', () => {
 // A modded Jibo's SSH: root/jibo only; /run is a temp folder; the channel's shell dies with it.
 function fakeJibo(t) {
     const run = fs.mkdtempSync(path.join(os.tmpdir(), 'beetle-run-')), shells = [], clients = [];
-    const server = new Server({ hostKeys: [utils.generateKeyPairSync('ed25519').private] }, client => {
+    const server = new Server({ hostKeys: [hostKey()] }, client => {
         clients.push(client);
         client.on('authentication', ctx => (ctx.method === 'password' && ctx.username === 'root' && ctx.password === 'jibo') ? ctx.accept() : ctx.reject(['password']));
         client.on('session', accept => accept().on('exec', (acceptExec, reject, info) => {

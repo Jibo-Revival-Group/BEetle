@@ -3,9 +3,13 @@
 // with /run mapped to a temp folder. usage: node ci/fake-jibo-ssh.js <port> <run dir>
 const { spawn } = require('child_process');
 const { Server, utils } = require('ssh2');
+// ssh2 makes an ed25519 key it can't parse back about 1 time in 200 (seen in CI): retry until it parses.
+function hostKey() {
+    for (;;) { const key = utils.generateKeyPairSync('ed25519').private; if (!(utils.parseKey(key) instanceof Error)) return key; }
+}
 const [port, run] = process.argv.slice(2);
 
-new Server({ hostKeys: [utils.generateKeyPairSync('ed25519').private] }, client => {
+new Server({ hostKeys: [hostKey()] }, client => {
     client.on('authentication', ctx => (ctx.method === 'password' && ctx.username === 'root' && ctx.password === 'jibo') ? ctx.accept() : ctx.reject(['password']));
     client.on('session', accept => accept().on('exec', (acceptExec, reject, info) => {
         const stream = acceptExec(), shell = spawn('sh', ['-c', info.command.split('/run/').join(run + '/')], { detached: true });
