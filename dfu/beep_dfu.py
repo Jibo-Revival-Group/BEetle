@@ -2,7 +2,8 @@
 run as a separate program so the app itself never needs administrator rights.
 
   beep_dfu.py status          one JSON line: {"robots": [{"port", "state"}], "usb_helper_needed": bool}
-  beep_dfu.py int-developer   RCM -> DFU if needed, then set mode.json to int-developer. No backup.
+  beep_dfu.py int-developer   RCM -> DFU if needed, set int-developer and install the boot-screen Wi-Fi/IP
+                              status. No backup is kept (a var copy made for the write is deleted after it verifies).
   beep_dfu.py backup          RCM -> DFU if needed, then back up every partition to ~/Jibo-Backups.
   beep_dfu.py usb-helper      Windows: install the UsbDk driver (Windows asks for permission).
   beep_dfu.py self-check      CI: every bundled tool runs and the toolkit loads.
@@ -12,6 +13,7 @@ Progress is plain text; the last line is `BEEP_RESULT {json}`.
 import json
 import os
 import runpy
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -28,7 +30,9 @@ def configure():
     os.environ["PATH"] = str(HERE / "tools") + os.pathsep + os.environ.get("PATH", "")
     if LIBUSB.is_file():
         os.environ["JIBO_LIBUSB"] = str(LIBUSB)
-    if sys.platform == "win32":  # keep dfu-util and ShofEL from flashing console windows
+    if sys.platform == "win32":
+        os.environ.setdefault("CYGWIN", "nodosfilewarning")  # the bundled Cygwin debugfs/e2fsck
+        # keep dfu-util, ShofEL and debugfs from flashing console windows
         original = subprocess.Popen.__init__
 
         def init(self, *args, **kwargs):
@@ -66,11 +70,31 @@ def robot(api):
 
 
 def int_developer(api):
-    result = api.set_mode_file_live(MODE, port=robot(api), confirmation=lambda plan: True,
-                                    guided=True, backup=False)
-    if result.get("status") not in ("verified", "already current"):
-        raise RuntimeError("The mode was not changed: " + str(result.get("status")))
-    return {"status": result["status"], "previous_mode": result.get("previous_mode"), "mode": MODE}
+    """int-developer, then the boot-screen Wi-Fi/IP status (it needs a developer mode, and new files in
+    var, so the toolkit installs it with a whole-var edit that first saves a copy of var)."""
+    port, yes = robot(api), lambda plan: True
+    copies_before = set(api.BACKUP_ROOT.glob("var-backup-*")) if api.BACKUP_ROOT.is_dir() else set()
+    try:
+        mode = api.set_mode_file_live(MODE, port=port, confirmation=yes, guided=True, backup=False)
+        previous = mode.get("previous_mode")
+    except api.FileRpcStatusError as exc:
+        if exc.status not in (3, 4):  # same fallback as the toolkit's menu: a layout or journal the loader can't edit
+            raise
+        print("Jibo's var needs a whole-partition edit for the mode change.", flush=True)
+        mode = api.set_mode_live(MODE, port=port, confirmation=yes)
+        previous = mode.get("current_mode")
+    if mode.get("status") not in ("verified", "already current", "unchanged"):
+        raise RuntimeError("The mode was not changed: " + str(mode.get("status")))
+    print("Installing the Wi-Fi/IP status on Jibo's boot screen…", flush=True)
+    screen = api.boot_network_status_live("install", port=port, confirmation=yes)
+    if screen.get("status") not in ("verified", "unchanged"):
+        raise RuntimeError("The Wi-Fi screen was not installed: " + str(screen.get("status")))
+    # Both writes verified: drop what they left behind, including any var copy made just for them.
+    for folder in [mode.get("operation_directory"), screen.get("operation_directory")] + \
+            sorted(set(api.BACKUP_ROOT.glob("var-backup-*")) - copies_before):
+        if folder:
+            shutil.rmtree(folder, ignore_errors=True)
+    return {"status": "verified", "previous_mode": previous, "mode": MODE, "wifi_screen": True}
 
 
 def backup(api):
@@ -84,7 +108,8 @@ def backup(api):
 
 def self_check(api):
     report = {}
-    for name, args in (("dfu-util", ("--version",)), ("shofel2_t124", ("--dfu-stage-capability",))):
+    for name, args in (("dfu-util", ("--version",)), ("shofel2_t124", ("--dfu-stage-capability",)),
+                       ("debugfs", ("-V",)), ("e2fsck", ("-V",))):
         run = subprocess.run([str(HERE / "tools" / (name + EXE)), *args], capture_output=True, text=True, timeout=30)
         output = (run.stdout + run.stderr).strip()
         if run.returncode or (name == "shofel2_t124" and output != "dfu-stage-launch=1"):
@@ -97,6 +122,8 @@ def self_check(api):
     if sys.platform != "win32" or not usb_helper_needed():  # listing needs UsbDk on Windows
         report["usb_devices"] = len(api.devices())
     report["no_backup_option"] = "backup" in api.set_mode_file_live.__code__.co_varnames
+    import jibo_images
+    report["wifi_screen_files"] = len(jibo_images.boot_network_status_assets())
     return report
 
 

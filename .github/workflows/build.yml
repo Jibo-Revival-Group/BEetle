@@ -62,6 +62,25 @@ jobs:
         uses: actions/download-artifact@v4
         with: {name: usb-windows-tools, path: windows-tools}
       - if: runner.os == 'Windows'
+        uses: cygwin/cygwin-install-action@v4
+        with: {packages: gcc-core make, install-dir: 'C:\cygwin'}
+      - name: Build e2fsprogs 1.47.1 with Cygwin (debugfs/e2fsck for the Wi-Fi screen install)
+        if: runner.os == 'Windows'
+        shell: C:\cygwin\bin\bash.exe --login -eo pipefail -o igncr '{0}'
+        run: |
+          cd /tmp
+          curl -fsSLO https://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.47.1/e2fsprogs-1.47.1.tar.gz
+          echo "0d2e0bf80935c3392b73a60dbff82d8a6ef7ea88b806c2eea964b6837d3fd6c2  e2fsprogs-1.47.1.tar.gz" | sha256sum -c
+          tar xzf e2fsprogs-1.47.1.tar.gz && cd e2fsprogs-1.47.1
+          # io.h declares _get_osfhandle, which getsize.c uses on Cygwin; newer GCC rejects it undeclared.
+          ./configure --prefix=/opt/e2fsprogs --disable-nls --disable-fuse2fs --disable-uuidd \
+            --without-udev-rules-dir --without-systemd-unit-dir --without-crond-dir \
+            CFLAGS="-O2 -include io.h" PKG_CONFIG=/usr/bin/false
+          make -j4
+          out=$(cygpath -u "$GITHUB_WORKSPACE")/e2fs && mkdir -p "$out"
+          cp debugfs/debugfs.exe e2fsck/e2fsck.exe "$out/"
+          "$out/debugfs.exe" -V
+      - if: runner.os == 'Windows'
         run: python build/dfu.py windows-runtime windows-tools
       - if: runner.os != 'Windows'
         run: python build/dfu.py tools

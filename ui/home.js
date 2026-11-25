@@ -93,9 +93,9 @@ function usbRun(action, busyText, doneText) {
 
 beetle.onUsbLine(line => { usbLog.textContent += line + '\n'; usbLog.scrollTop = usbLog.scrollHeight; });
 devmode.addEventListener('click', () => {
-    if (!confirm('Switch Jibo to int-developer mode?\n\nThis does not make a backup of Jibo first.')) return;
+    if (!confirm('Switch Jibo to int-developer mode and add the Wi-Fi/IP status to his boot screen?\n\nThis does not keep a backup of Jibo.')) return;
     usbRun('int-developer', 'Switching Jibo to int-developer… Keep him plugged in.', result =>
-        (result.status === 'already current' ? 'Jibo was already in int-developer.' : 'Jibo is now in int-developer (was ' + result.previous_mode + ').') +
+        (result.previous_mode === 'int-developer' ? 'Jibo was already in int-developer; the Wi-Fi screen is on.' : 'Jibo is now in int-developer (was ' + result.previous_mode + ') with the Wi-Fi screen.') +
         ' Press the RESET button under the hatch (the upper small button) to restart him.');
 });
 backupButton.addEventListener('click', () => usbRun('backup', 'Backing up every partition… This takes a while; keep Jibo plugged in.',
