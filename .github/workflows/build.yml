@@ -48,7 +48,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: actions/upload-artifact@v4
         with:
-          name: BEetle-${{ runner.os }}
+          name: BEep-${{ runner.os }}
           path: |
             dist/*.AppImage
             dist/*.exe
@@ -71,5 +71,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -l out
-          gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "BEetle ${GITHUB_REF_NAME#v}" \
+          gh release create "$GITHUB_REF_NAME" out/* -R "$GITHUB_REPOSITORY" --title "BEep ${GITHUB_REF_NAME#v}" \
             --notes "BEep for your computer. Download the file for your system below; see the README for first-launch steps."

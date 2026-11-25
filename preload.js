@@ -1,6 +1,6 @@
 'use strict';
 
-// The bridge between BEetle's own screens (home, robot, convert) and main.js.
+// The bridge between BEep's own screens (home, robot, convert) and main.js.
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('beetle', {

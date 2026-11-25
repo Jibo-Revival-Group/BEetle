@@ -1,4 +1,4 @@
-/* 5x1 colours (5x1.com) and BEep's glass surfaces, shared by every BEetle screen. */
+/* 5x1 colours (5x1.com) and BEep's glass surfaces, shared by every BEep screen. */
 :root {
     --backdrop: #111513; --green: #29d780; --on-green: #0d2015; --text: #eef1ec; --muted: #b0bbb2; --red: #ff8a80;
     --glass: rgba(30, 44, 35, .72); --edge: rgba(255, 255, 255, .12);

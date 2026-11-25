@@ -13,6 +13,8 @@ const SCRIPTS = {
 };
 // `--check` (CI) opens the robot at 127.0.0.1 and converts against a stand-in SSH server, then exits.
 const CHECK = process.argv.indexOf('--check') >= 0;
+// Saved robots stay in the folder the app used while it was called BEetle (2.0), unless one is given (the app check).
+if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', path.join(app.getPath('appData'), 'BEetle'));
 
 let win = null, store = null, scanning = null;
 
@@ -29,7 +31,7 @@ function rescan() {
 
 function createWindow() {
     win = new BrowserWindow({
-        width: 1200, height: 820, minWidth: 760, minHeight: 560, backgroundColor: '#111513', title: 'BEetle',
+        width: 1200, height: 820, minWidth: 760, minHeight: 560, backgroundColor: '#111513', title: 'BEep',
         icon: path.join(__dirname, 'build/icon.png'), autoHideMenuBar: true,
         webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, webviewTag: true }
     });

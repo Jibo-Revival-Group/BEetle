@@ -1,5 +1,5 @@
 'use strict';
-// Stand-in for a modded Jibo's SSH server (root/jibo) for the app check: runs BEetle's command
+// Stand-in for a modded Jibo's SSH server (root/jibo) for the app check: runs BEep's command
 // with /run mapped to a temp folder. usage: node ci/fake-jibo-ssh.js <port> <run dir>
 const { spawn } = require('child_process');
 const { Server, utils } = require('ssh2');

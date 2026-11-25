@@ -1,7 +1,7 @@
 {
   "name": "beetle",
-  "productName": "BEetle",
-  "version": "2.0.0",
+  "productName": "BEep",
+  "version": "2.1.0",
   "description": "BEep for your computer: find Jibo on your network, open BEacon in the 5x1 look, and convert a modded Jibo to 5x1.",
   "main": "main.js",
   "author": "Zane V <zane@jiborevival.com>",
@@ -22,7 +22,7 @@
   },
   "build": {
     "appId": "com.jiborevival.beetle",
-    "productName": "BEetle",
+    "productName": "BEep",
     "files": [
       "main.js",
       "finder.js",
@@ -43,7 +43,7 @@
       "output": "dist",
       "buildResources": "build"
     },
-    "artifactName": "BEetle-${version}-${os}-${arch}.${ext}",
+    "artifactName": "BEep-${version}-${os}-${arch}.${ext}",
     "win": {
       "target": [
         "nsis",
@@ -54,7 +54,7 @@
       "oneClick": true
     },
     "portable": {
-      "artifactName": "BEetle-${version}-windows-portable.${ext}"
+      "artifactName": "BEep-${version}-windows-portable.${ext}"
     },
     "mac": {
       "target": [
@@ -76,5 +76,5 @@
     },
     "npmRebuild": false
   },
-  "desktopName": "BEetle.desktop"
+  "desktopName": "BEep.desktop"
 }

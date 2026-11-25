@@ -1,5 +1,5 @@
 #!/bin/sh
-# Opens BEetle against a stand-in robot: real BEacon page on 127.0.0.1:8123 and a fake SSH Jibo,
+# Opens BEep against a stand-in robot: real BEacon page on 127.0.0.1:8123 and a fake SSH Jibo,
 # then checks the page took BEep's look, the Store tab followed, and a conversion finished.
 # usage: ci/app-check.sh <BEam beacon/public dir>   (Linux needs a display, e.g. xvfb-run)
 set -e

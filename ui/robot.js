@@ -27,7 +27,7 @@ const buttons = {};
 let state = { title: '', panel: '', actions: [] };
 
 $('name').textContent = robot.name; $('host').textContent = robot.host; $('gone-name').textContent = robot.name;
-titleEl.textContent = robot.name; document.title = robot.name + ' – BEetle';
+titleEl.textContent = robot.name; document.title = robot.name + ' – BEep';
 TABS.forEach(tab => {
     if (!tab) { const sep = document.createElement('div'); sep.className = 'sep'; tabs.appendChild(sep); return; }
     const b = document.createElement('button');

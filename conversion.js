@@ -4,7 +4,7 @@
 // served at scripts.5x1.com/pm), streaming its output. A Jibo that was never set up (OOBE) gets
 // PM/post-oobe-mod.sh instead; on an old factory system its first run only updates the system.
 // Same robot-side command as BEep: PM runs detached with its output in /run/5x1-pm.log, so it
-// finishes if the computer sleeps or BEetle closes, and connecting again only follows the log.
+// finishes if the computer sleeps or BEep closes, and connecting again only follows the log.
 const { Client } = require('ssh2');
 
 // OOBE: PM's own OOBE state file, no credentials yet, or mode "oobe". No single quotes: it runs inside sh -c '...'.

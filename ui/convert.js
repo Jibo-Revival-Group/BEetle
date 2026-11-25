@@ -20,7 +20,7 @@ $('form').addEventListener('submit', e => {
     const host = address.value.trim();
     if (running || !host) return;
     running = true; go.disabled = true; go.textContent = 'Converting…'; address.disabled = true;
-    status.textContent = 'Working on Jibo… keep BEetle open.'; status.className = 'muted';
+    status.textContent = 'Working on Jibo… keep BEep open.'; status.className = 'muted';
     log.textContent = ''; log.hidden = false;
     beetle.convert(host).then(result => {
         running = false; go.disabled = false; go.textContent = 'Convert to 5x1'; address.disabled = false;

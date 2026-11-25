@@ -6,7 +6,7 @@ const { ipcRenderer } = require('electron');
 
 const scripts = ipcRenderer.sendSync('scripts');
 // eslint-disable-next-line no-eval
-const run = source => { try { (0, eval)(source); } catch (e) { console.warn('BEetle page script failed:', e); } };
+const run = source => { try { (0, eval)(source); } catch (e) { console.warn('BEep page script failed:', e); } };
 
 window.webkit = { messageHandlers: { beep: { postMessage: s => ipcRenderer.sendToHost('state', s) } } };
 // Preloads run before <html> exists; the theme appends its style to it, so wait for it (as BEep's preview does).
