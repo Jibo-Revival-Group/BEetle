@@ -72,31 +72,34 @@ def robot(api):
 
 
 def int_developer(api):
-    """int-developer, then the boot-screen Wi-Fi/IP status (it needs a developer mode, and new files in
-    var, so the toolkit installs it with a whole-var edit that first saves a copy of var)."""
-    port, yes = robot(api), lambda plan: True
+    """int-developer plus the boot-screen Wi-Fi/IP status with one var read, one write and one readback.
+    The status needs a whole-var edit anyway, so var is read first, before any other request in this DFU
+    session: after the old quick mode write (a file request) Jibo's loader could stall reading var."""
+    port, images, yes = robot(api), api.images, lambda plan: True
+    dfu_util = api.tool("dfu-util")
+    _, _, device_tag = api._dfu_context(port, dfu_util)
     copies_before = set(api.BACKUP_ROOT.glob("var-backup-*")) if api.BACKUP_ROOT.is_dir() else set()
+    directory, state = api._new_operation_dir(None, "int-developer"), None
+    operation = "set mode to " + MODE + " and install the boot-screen Wi-Fi/IP status"
     try:
-        mode = api.set_mode_file_live(MODE, port=port, confirmation=yes, guided=True, backup=False)
-        previous = mode.get("previous_mode")
-    except api.FileRpcStatusError as exc:
-        if exc.status not in (3, 4):  # same fallback as the toolkit's menu: a layout or journal the loader can't edit
-            raise
-        print("Jibo's var needs a whole-partition edit for the mode change.", flush=True)
-        mode = api.set_mode_live(MODE, port=port, confirmation=yes)
-        previous = mode.get("current_mode")
-    if mode.get("status") not in ("verified", "already current", "unchanged"):
-        raise RuntimeError("The mode was not changed: " + str(mode.get("status")))
-    print("Installing the Wi-Fi/IP status on Jibo's boot screen…", flush=True)
-    screen = api.boot_network_status_live("install", port=port, confirmation=yes)
-    if screen.get("status") not in ("verified", "unchanged"):
-        raise RuntimeError("The Wi-Fi screen was not installed: " + str(screen.get("status")))
-    # Both writes verified: drop what they left behind, including any var copy made just for them.
-    for folder in [mode.get("operation_directory"), screen.get("operation_directory")] + \
-            sorted(set(api.BACKUP_ROOT.glob("var-backup-*")) - copies_before):
-        if folder:
-            shutil.rmtree(folder, ignore_errors=True)
-    return {"status": "verified", "previous_mode": previous, "mode": MODE, "wifi_screen": True}
+        state = api._prepare_current_and_baseline(dfu_util, port, device_tag, directory)
+        mode_image = directory / "mode-var.img"
+        previous = images.edit_mode(state["before"], mode_image, MODE)["previous_mode"]
+        print("Mode change: " + previous + " → " + MODE, flush=True)
+        print("Adding the Wi-Fi/IP status to Jibo's boot screen…", flush=True)
+        images.edit_boot_network_status(mode_image, directory / "edited-var.img", "install")
+        mode_image.unlink()
+        result = api._write_candidate(directory / "edited-var.img", state["before"], directory, port, dfu_util,
+                                      yes, operation, state["baseline"], state["before_sha256"],
+                                      state["baseline_sha256"])
+    except (api.DfuError, images.ImageError) as exc:
+        api._raise_live_operation_error(directory, operation, state, exc)
+    if result.get("status") not in ("verified", "unchanged"):
+        raise RuntimeError("Jibo was not changed: " + str(result.get("status")))
+    # Verified: drop what the write left behind, including the var copy made just for it.
+    for folder in [directory] + sorted(set(api.BACKUP_ROOT.glob("var-backup-*")) - copies_before):
+        shutil.rmtree(folder, ignore_errors=True)
+    return {"status": result["status"], "previous_mode": previous, "mode": MODE, "wifi_screen": True}
 
 
 def wifi(api, request):
@@ -152,6 +155,20 @@ def self_check(api):
     return report
 
 
+def explain(exc):
+    """The toolkit's message, plus what to do when Jibo's loader refuses a repeat read in one DFU session."""
+    text = str(exc)
+    if "DFU_UPLOAD block 0" not in text:
+        return text
+    # Jibo's RAM loader keeps its place in a partition after an interrupted read, so reading that
+    # partition again only works after Jibo re-enters DFU from RCM.
+    step = ("Nothing on Jibo was changed. " if "No partition write was attempted" in text else "")
+    return ("Jibo's USB loader can't read this partition again until he restarts in RCM mode, usually "
+            "because an earlier read was interrupted. " + step + "Shut Jibo down, put him back in RCM mode "
+            "(hold the RCM button while you turn him on, with the USB cable plugged in), then try again."
+            "\n\nDetails: " + text)
+
+
 def main(argv):
     configure()
     if argv and argv[0].endswith("jibo_dfu_pipeline.py"):
@@ -180,7 +197,7 @@ def main(argv):
             print(__doc__, file=sys.stderr)
             return 2
     except Exception as exc:  # the toolkit's messages are written for people; pass them on
-        print("BEEP_RESULT " + json.dumps({"ok": False, "error": str(exc)}), flush=True)
+        print("BEEP_RESULT " + json.dumps({"ok": False, "error": explain(exc)}), flush=True)
         return 1
     print("BEEP_RESULT " + json.dumps(dict(result, ok=True)), flush=True)
     return 0

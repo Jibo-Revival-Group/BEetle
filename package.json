@@ -1,7 +1,7 @@
 {
   "name": "beetle",
   "productName": "BEep",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "BEep for your computer: find Jibo on your network, open BEacon in the 5x1 look, convert a modded Jibo to 5x1, and switch Jibo to int-developer or back him up over USB.",
   "main": "main.js",
   "author": "Zane V <zane@jiborevival.com>",
